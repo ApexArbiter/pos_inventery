@@ -1,0 +1,4 @@
+2025/09/03-00:56:00.503 3568 Reusing MANIFEST E:\VScode\Projects\Raza-Catering-wwebjs\whatsapp\.wwebjs_auth\raza-catering-session\session-raza-catering-session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/09/03-00:56:00.504 3568 Recovering log #112
+2025/09/03-00:56:00.555 3568 Reusing old log E:\VScode\Projects\Raza-Catering-wwebjs\whatsapp\.wwebjs_auth\raza-catering-session\session-raza-catering-session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000112.log 
+2025/09/03-00:56:02.457 6158 Manual compaction at level-0 from '\x00/\x00\x00\x00' @ 72057594037927935 : 1 .. '\x000\x00\x00\x00' @ 0 : 0; will stop at (end)

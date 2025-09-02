@@ -3,6 +3,7 @@ import Product from "../models/product.model.js";
 import BillImageService from "../lib/billImageGenerator.js";
 import { uploadBillImage } from "../lib/cloudinary.js";
 import WhatsAppService from "../lib/whatsapp.js";
+import { whatsappProxy } from "../lib/whatsappProxy.js";
 
 // Get all orders with filtering, searching, and pagination
 export const getAllOrders = async (req, res) => {
@@ -594,16 +595,16 @@ export const getOrderStats = async (req, res) => {
 // Updated getOrdersByDateRange controller - Fixed date handling
 export const getOrdersByDateRange = async (req, res) => {
   try {
-    const { 
-      startDate, 
-      endDate, 
-      status, 
-      priority, 
+    const {
+      startDate,
+      endDate,
+      status,
+      priority,
       search,
       page = 1,
       limit = 20,
       sortBy = "createdAt",
-      sortOrder = "desc"
+      sortOrder = "desc",
     } = req.query;
 
     if (!startDate || !endDate) {
@@ -616,7 +617,7 @@ export const getOrdersByDateRange = async (req, res) => {
     const filter = {
       createdAt: {
         $gte: new Date(startDate + "T00:00:00.000Z"), // Start of day
-        $lte: new Date(endDate + "T23:59:59.999Z"),   // End of day
+        $lte: new Date(endDate + "T23:59:59.999Z"), // End of day
       },
     };
 
@@ -654,10 +655,13 @@ export const getOrdersByDateRange = async (req, res) => {
     if (req.user.role === "admin") {
       populateFields = [
         { path: "items.productId", select: "name category image" },
-        { path: "createdBy", select: "fullName email branch" }
+        { path: "createdBy", select: "fullName email branch" },
       ];
     } else {
-      populateFields = { path: "items.productId", select: "name category image" };
+      populateFields = {
+        path: "items.productId",
+        select: "name category image",
+      };
     }
 
     const orders = await Order.find(filter)
@@ -736,75 +740,7 @@ export const sendBillViaWhatsApp = async (req, res) => {
     const { id } = req.params;
     const { imageData } = req.body;
 
-    console.log(`🔍 Looking for order with ID: ${id}`);
-
-    // More flexible order finding - try different ID formats
-    let order;
-
-    // Try finding by _id first
-    try {
-      order = await Order.findById(id).populate([
-        {
-          path: "items.productId",
-          select: "name category image description items",
-        },
-        { path: "createdBy", select: "fullName email branch" },
-      ]);
-    } catch (err) {
-      console.log("Failed to find by _id, trying as string...");
-    }
-
-    // If not found by _id, try finding by string comparison
-    if (!order) {
-      order = await Order.findOne({
-        $or: [{ _id: id }, { _id: id.toString() }, { orderNumber: id }],
-      }).populate([
-        {
-          path: "items.productId",
-          select: "name category image description items",
-        },
-        { path: "createdBy", select: "fullName email branch" },
-      ]);
-    }
-
-    // If still not found and user is not admin, check with user filter
-    if (!order && req.user.role !== "admin") {
-      order = await Order.findOne({
-        $and: [
-          {
-            $or: [{ _id: id }, { _id: id.toString() }, { orderNumber: id }],
-          },
-          { createdBy: req.user._id },
-        ],
-      }).populate([
-        {
-          path: "items.productId",
-          select: "name category image description items",
-        },
-        { path: "createdBy", select: "fullName email branch" },
-      ]);
-    }
-
-    if (!order) {
-      console.error(`❌ Order not found with ID: ${id}`);
-      return res.status(404).json({
-        success: false,
-        error: "Order not found",
-        details: `No order found with ID: ${id}`,
-      });
-    }
-
-    console.log(`✅ Order found: ${order.orderNumber} (ID: ${order._id})`);
-
-    // Validate customer WhatsApp number
-    if (!order.customer.whatsapp) {
-      return res.status(400).json({
-        success: false,
-        error: "Customer WhatsApp number is required",
-      });
-    }
-
-    // Validate image data
+    // Validate required fields
     if (!imageData) {
       return res.status(400).json({
         success: false,
@@ -812,103 +748,86 @@ export const sendBillViaWhatsApp = async (req, res) => {
       });
     }
 
-    console.log(`🚀 Starting bill process for order: ${order.orderNumber}`);
-    console.log(`📱 Customer WhatsApp: ${order.customer.whatsapp}`);
-
-    try {
-      // Step 1: Convert base64 to buffer
-      console.log("Step 1: Converting image data...");
-      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
-      const imageBuffer = Buffer.from(base64Data, "base64");
-      console.log(`✅ Image data converted: ${imageBuffer.length} bytes`);
-
-      // Step 2: Upload image to Cloudinary
-      console.log("Step 2: Uploading bill image to Cloudinary...");
-      const billImageUrl = await uploadBillImage(
-        imageBuffer,
-        `${order.orderNumber}_${Date.now()}` // Add timestamp to make each upload unique
-      );
-      console.log(`✅ Bill image uploaded to Cloudinary: ${billImageUrl}`);
-
-      // Step 3: Send WhatsApp messages
-      console.log("Step 3: Sending WhatsApp templates...");
-
-      // Send dynamic template with order details
-      const dynamicResult = await WhatsAppService.sendDynamicTemplate(
-        order.customer.whatsapp,
-        order.customer.name,
-        order.orderNumber,
-        billImageUrl
-      );
-      console.log("✅ Dynamic template sent successfully!");
-
-      // Step 4: Update order record with current timestamp (allow resending)
-      console.log("Step 4: Updating order record...");
-      const updateData = {
-        $set: {
-          billSentAt: new Date(),
-          billImageUrl: billImageUrl,
-          lastBillError: null,
-          lastBillAttempt: new Date(),
-        },
-        $push: {
-          billHistory: {
-            sentAt: new Date(),
-            imageUrl: billImageUrl,
-            whatsappMessageId: dynamicResult.messages?.[0]?.id,
-            recipientPhone: order.customer.whatsapp,
-          },
-        },
-      };
-
-      await Order.findByIdAndUpdate(order._id, updateData);
-      console.log("✅ Order updated successfully");
-
-      // Step 5: Return success response
-      const responseData = {
-        dynamicMessage: {
-          id: dynamicResult.messages?.[0]?.id,
-          status: dynamicResult.messages?.[0]?.message_status,
-        },
-        sentTo: order.customer.whatsapp,
-        billImageUrl: billImageUrl,
-        whatsappMessageId: dynamicResult.messages?.[0]?.id,
-        sentAt: new Date(),
-        orderNumber: order.orderNumber,
-      };
-
-      res.status(200).json({
-        success: true,
-        message: "Bill sent successfully via WhatsApp",
-        data: responseData,
-      });
-    } catch (processError) {
-      console.error("❌ Process error:", processError);
-
-      // Update order with error details
-      await Order.findByIdAndUpdate(order._id, {
-        $set: {
-          lastBillError: processError.message,
-          lastBillAttempt: new Date(),
-        },
-      });
-
-      return res.status(500).json({
+    // Get order details from database
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({
         success: false,
-        error: "Failed to process bill sending",
-        details: processError.message,
+        error: "Order not found",
       });
     }
+
+    // Validate customer has WhatsApp number
+    if (!order.customer?.whatsapp) {
+      return res.status(400).json({
+        success: false,
+        error: "Customer WhatsApp number not found",
+      });
+    }
+
+    console.log(
+      `📤 Sending bill for Order #${order.orderNumber} to ${order.customer.whatsapp}`
+    );
+
+    // Clean base64 data (remove data URL prefix if present)
+    const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    // Prepare WhatsApp message caption
+    const caption = `📄 *Your Order Bill*
+Order #: ${order.orderNumber}
+Total Amount: £${order.finalAmount.toFixed(2)}
+Status: ${order.status.toUpperCase()}
+
+Thank you for choosing Raza Catering! 🍽️
+
+For any queries, please contact us.`;
+
+    // Send bill image via WhatsApp
+    const whatsappResponse = await whatsappProxy.sendImageFile(
+      order.customer.whatsapp,
+      base64Data,
+      `bill-${order.orderNumber}.png`,
+      "image/png",
+      caption
+    );
+
+    console.log(`✅ Bill sent successfully to ${order.customer.whatsapp}`);
+
+    // Respond with success
+    res.json({
+      success: true,
+      message: "Bill sent successfully via WhatsApp",
+      data: {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        sentTo: order.customer.whatsapp,
+        customerName: order.customer.name,
+        whatsappMessageId: whatsappResponse.messageId || whatsappResponse.id,
+        sentAt: new Date().toISOString(),
+      },
+    });
   } catch (error) {
-    console.error("❌ Unexpected error in sendBillViaWhatsApp:", error);
-    res.status(500).json({
+    console.error("❌ Error sending bill via WhatsApp:", error);
+
+    // Handle different types of errors
+    let errorMessage = "Failed to send bill via WhatsApp";
+    let statusCode = 500;
+
+    if (error.message.includes("WhatsApp")) {
+      errorMessage = "WhatsApp service error: " + error.message;
+      statusCode = 503;
+    } else if (error.message.includes("not found")) {
+      statusCode = 404;
+    }
+
+    res.status(statusCode).json({
       success: false,
-      error: "Internal server error",
-      details: error.message,
+      error: errorMessage,
+      details:
+        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
-
 // Helper function to ensure order exists before sending bill
 export const ensureOrderExists = async (
   orderId,

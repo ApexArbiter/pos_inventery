@@ -18,10 +18,9 @@ import {
   Phone,
   Settings,
 } from "lucide-react";
-import axiosInstance from "../api/axiosInstance";
 
 const WhatsAppSettings = () => {
-  const [sessionId] = useState("raza-catering-session"); // Fixed session ID for the business
+  const [sessionId] = useState("raza-catering-session");
   const [sessionStatus, setSessionStatus] = useState("unknown");
   const [qrCode, setQrCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -35,13 +34,52 @@ const WhatsAppSettings = () => {
   const [lastUpdate, setLastUpdate] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(null);
-  const [screenshot, setScreenshot] = useState("");
+  const [clientInfo, setClientInfo] = useState(null);
+
+  // Base URL for your backend - adjust this to match your server
+  const API_BASE_URL = "http://localhost:3000";
+  const API_KEY = "MAHAD";
+
+  // API helper function
+  const apiCall = async (endpoint, options = {}) => {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const config = {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    const response = await fetch(url, config);
+
+    // Handle image responses
+    if (
+      endpoint.includes("/image") ||
+      response.headers.get("content-type")?.startsWith("image/")
+    ) {
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      return response.blob();
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    return data;
+  };
 
   // Add notification helper
   const addNotification = useCallback((type, message, duration = 5000) => {
     const id = Date.now();
     const notification = { id, type, message, timestamp: new Date() };
-    setNotifications((prev) => [notification, ...prev.slice(0, 4)]); // Keep only latest 5
+    setNotifications((prev) => [notification, ...prev.slice(0, 4)]);
 
     if (duration > 0) {
       setTimeout(() => {
@@ -53,23 +91,45 @@ const WhatsAppSettings = () => {
   // Check session status
   const checkSessionStatus = useCallback(async () => {
     try {
-      const response = await axiosInstance.get("/whatsapp/session/status");
-      setSessionStatus(response.data.state || "unknown");
+      const response = await apiCall(`/session/status/${sessionId}`);
+      console.log("Status response:", response);
+
+      // Map backend status to frontend status
+      let frontendStatus = response.status;
+      if (response.status === "qr_code") {
+        frontendStatus = "WAITING_QR_SCAN";
+      } else if (response.status === "connected") {
+        frontendStatus = "CONNECTED";
+      } else if (response.status === "disconnected") {
+        frontendStatus = "STOPPED";
+      } else if (response.status === "not_initialized") {
+        frontendStatus = "STOPPED";
+      }
+
+      setSessionStatus(frontendStatus);
       setLastUpdate(new Date());
 
-      if (response.data.state === "CONNECTED") {
+      if (frontendStatus === "CONNECTED") {
         addNotification("success", "WhatsApp session is connected and ready!");
+        // Get client info when connected
+        getClientInfo();
       }
     } catch (error) {
+      console.error("Status check error:", error);
       setSessionStatus("error");
-      addNotification(
-        "error",
-        `Failed to check status: ${
-          error.response?.data?.error || error.message
-        }`
-      );
+      addNotification("error", `Failed to check status: ${error.message}`);
     }
-  }, [addNotification]);
+  }, [sessionId, addNotification]);
+
+  // Get client info
+  const getClientInfo = async () => {
+    try {
+      const response = await apiCall(`/client/info/${sessionId}`);
+      setClientInfo(response.clientInfo);
+    } catch (error) {
+      console.warn("Could not get client info:", error.message);
+    }
+  };
 
   // Get QR code
   const getQRCode = useCallback(async () => {
@@ -77,40 +137,57 @@ const WhatsAppSettings = () => {
 
     setIsLoading(true);
     try {
-      const response = await axiosInstance.get("/whatsapp/session/qr", {
-        responseType: "blob", // Get as blob for image
-      });
+      // Try to get the QR code image first
+      try {
+        const imageBlob = await apiCall(`/session/qr/${sessionId}/image`);
+        const imageUrl = URL.createObjectURL(imageBlob);
+        setQrCode(imageUrl);
+        addNotification(
+          "info",
+          "QR Code updated! Please scan with your phone."
+        );
+      } catch (imageError) {
+        console.log(
+          "Image endpoint failed, trying text endpoint:",
+          imageError.message
+        );
 
-      const imageUrl = URL.createObjectURL(response.data);
-      setQrCode(imageUrl);
-      addNotification("info", "QR Code updated! Please scan with your phone.");
+        // Fallback to text QR code endpoint
+        const response = await apiCall(`/session/qr/${sessionId}`);
+        if (response.qrCode) {
+          // Generate QR code image from text (you'd need a QR code library for this in production)
+          setQrCode(response.qrCode);
+          addNotification(
+            "info",
+            "QR Code text received! Please implement QR image generation."
+          );
+        }
+      }
     } catch (error) {
-      addNotification(
-        "error",
-        `Failed to get QR code: ${error.response?.data?.error || error.message}`
-      );
+      console.error("QR Code error:", error);
+      addNotification("error", `Failed to get QR code: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
-  }, [sessionStatus, addNotification]);
+  }, [sessionStatus, sessionId, addNotification]);
 
   // Start session
   const startSession = async () => {
     setIsLoading(true);
     try {
-      await axiosInstance.get("/whatsapp/session/start");
-      addNotification("success", "Session started successfully!");
+      const response = await apiCall(`/session/start/${sessionId}`);
+      addNotification(
+        "success",
+        response.message || "Session started successfully!"
+      );
+
+      // Wait a bit then check status and get QR code
       setTimeout(() => {
         checkSessionStatus();
         getQRCode();
       }, 2000);
     } catch (error) {
-      addNotification(
-        "error",
-        `Failed to start session: ${
-          error.response?.data?.error || error.message
-        }`
-      );
+      addNotification("error", `Failed to start session: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -120,17 +197,16 @@ const WhatsAppSettings = () => {
   const stopSession = async () => {
     setIsLoading(true);
     try {
-      await axiosInstance.get("/whatsapp/session/stop");
+      const response = await apiCall(`/session/stop/${sessionId}`);
       setSessionStatus("STOPPED");
       setQrCode("");
-      addNotification("info", "Session stopped successfully.");
-    } catch (error) {
+      setClientInfo(null);
       addNotification(
-        "error",
-        `Failed to stop session: ${
-          error.response?.data?.error || error.message
-        }`
+        "info",
+        response.message || "Session stopped successfully."
       );
+    } catch (error) {
+      addNotification("error", `Failed to stop session: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -140,19 +216,18 @@ const WhatsAppSettings = () => {
   const restartSession = async () => {
     setIsLoading(true);
     try {
-      await axiosInstance.get("/whatsapp/session/restart");
-      addNotification("success", "Session restarted successfully!");
+      const response = await apiCall(`/session/restart/${sessionId}`);
+      addNotification(
+        "success",
+        response.message || "Session restarted successfully!"
+      );
+
       setTimeout(() => {
         checkSessionStatus();
         getQRCode();
       }, 2000);
     } catch (error) {
-      addNotification(
-        "error",
-        `Failed to restart session: ${
-          error.response?.data?.error || error.message
-        }`
-      );
+      addNotification("error", `Failed to restart session: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -167,24 +242,27 @@ const WhatsAppSettings = () => {
 
     setIsLoading(true);
     try {
-      const response = await axiosInstance.post(
-        "/whatsapp/session/requestPairingCode",
+      const response = await apiCall(
+        `/session/requestPairingCode/${sessionId}`,
         {
-          phoneNumber: phoneNumber.replace(/\D/g, ""), // Remove non-digits
-          showNotification: true,
+          method: "POST",
+          body: JSON.stringify({
+            phoneNumber: phoneNumber.replace(/\D/g, ""),
+          }),
         }
       );
 
       setPairingCode(
-        response.data.code || "Check your phone for the pairing code"
+        response.pairingCode || "Check your phone for the pairing code"
       );
-      addNotification("success", "Pairing code requested! Check your phone.");
+      addNotification(
+        "success",
+        response.message || "Pairing code requested! Check your phone."
+      );
     } catch (error) {
       addNotification(
         "error",
-        `Failed to request pairing code: ${
-          error.response?.data?.error || error.message
-        }`
+        `Failed to request pairing code: ${error.message}`
       );
     } finally {
       setIsLoading(false);
@@ -203,43 +281,32 @@ const WhatsAppSettings = () => {
 
     setIsLoading(true);
     try {
-      await axiosInstance.post("/whatsapp/send-notification", {
-        phoneNumber: testMessage.phoneNumber.replace(/\D/g, ""),
-        message: testMessage.message,
+      const chatId = `${testMessage.phoneNumber.replace(/\D/g, "")}@c.us`;
+
+      const response = await apiCall(`/client/sendMessage/${sessionId}`, {
+        method: "POST",
+        body: JSON.stringify({
+          chatId: chatId,
+          contentType: "string",
+          content: testMessage.message,
+        }),
       });
 
       addNotification("success", "Test message sent successfully!");
     } catch (error) {
-      addNotification(
-        "error",
-        `Failed to send test message: ${
-          error.response?.data?.error || error.message
-        }`
-      );
+      addNotification("error", `Failed to send test message: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Get screenshot - Note: You'll need to add this route to your backend
-  const getScreenshot = async () => {
-    setIsLoading(true);
+  // Health check / Ping
+  const pingAPI = async () => {
     try {
-      const response = await axiosInstance.get("/whatsapp/session/screenshot", {
-        responseType: "blob",
-      });
-      const imageUrl = URL.createObjectURL(response.data);
-      setScreenshot(imageUrl);
-      addNotification("success", "Screenshot captured!");
+      const response = await apiCall("/ping");
+      addNotification("success", `API Health Check: ${response.message}`);
     } catch (error) {
-      addNotification(
-        "error",
-        `Failed to get screenshot: ${
-          error.response?.data?.error || error.message
-        }`
-      );
-    } finally {
-      setIsLoading(false);
+      addNotification("error", `API Health Check Failed: ${error.message}`);
     }
   };
 
@@ -251,7 +318,7 @@ const WhatsAppSettings = () => {
         if (sessionStatus === "WAITING_QR_SCAN") {
           getQRCode();
         }
-      }, 10000); // Check every 10 seconds
+      }, 10000);
 
       setRefreshInterval(interval);
       return () => clearInterval(interval);
@@ -316,25 +383,26 @@ const WhatsAppSettings = () => {
               Manage your WhatsApp Web connection for order notifications
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Auto Refresh
-              </label>
-              <button
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className={`relative w-11 h-6 transition-colors duration-200 ease-in-out rounded-full ${
-                  autoRefresh ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"
-                }`}
-              >
-                <span
-                  className={`${
-                    autoRefresh ? "translate-x-5" : "translate-x-0"
-                  } inline-block w-5 h-5 transform bg-white rounded-full transition-transform duration-200 ease-in-out`}
-                />
-              </button>
-            </div>
-          </div>
+         <div className="flex items-center space-x-4">
+  <div className="flex items-center space-x-2">
+    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+      Auto Refresh
+    </label>
+    <button
+      onClick={() => setAutoRefresh(!autoRefresh)}
+      className={`relative inline-flex items-center h-7 w-14 rounded-full transition-colors duration-300 ease-in-out focus:outline-none 
+        ${autoRefresh ? "bg-green-500 shadow-md shadow-green-400/50" : "bg-gray-300 dark:bg-gray-600"}
+      `}
+    >
+      <span
+        className={`inline-block w-6 h-6 transform bg-white rounded-full shadow-md transition-transform duration-300 ease-in-out
+          ${autoRefresh ? "translate-x-7" : "translate-x-0"}
+        `}
+      />
+    </button>
+  </div>
+</div>
+ 
         </div>
 
         {/* Notifications */}
@@ -400,6 +468,12 @@ const WhatsAppSettings = () => {
                   {sessionStatus.replace("_", " ").toUpperCase()}
                 </span>
               </div>
+              {clientInfo && (
+                <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  <p>Connected as: {clientInfo.pushname}</p>
+                  <p>Phone: {clientInfo.wid?.user || "N/A"}</p>
+                </div>
+              )}
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -495,13 +569,21 @@ const WhatsAppSettings = () => {
               ) : qrCode ? (
                 <div className="text-center">
                   <div className="bg-white p-4 rounded-xl inline-block shadow-lg">
-                    {console.log(qrCode)}
-                    {console.log(qrCode.type)}
-                    <img
-                      src={qrCode} // This is now an object URL from blob
-                      alt="WhatsApp QR Code"
-                      className="w-64 h-64 mx-auto"
-                    />
+                    {qrCode.startsWith("http") || qrCode.startsWith("blob:") ? (
+                      <img
+                        src={qrCode}
+                        alt="WhatsApp QR Code"
+                        className="w-64 h-64 mx-auto"
+                      />
+                    ) : (
+                      <div className="w-64 h-64 mx-auto flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 p-4 font-mono break-all">
+                          {qrCode.length > 100
+                            ? `${qrCode.substring(0, 100)}...`
+                            : qrCode}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
                     Scan this QR code with your WhatsApp mobile app to connect
@@ -643,238 +725,10 @@ const WhatsAppSettings = () => {
           </div>
         </div>
 
-        {/* Additional Tools */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Screenshot Tool */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
-              <Camera className="w-6 h-6 text-indigo-500 mr-3" />
-              Page Screenshot
-            </h3>
+        
+      
 
-            <div className="space-y-4">
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Capture a screenshot of the current WhatsApp Web session for
-                debugging.
-              </p>
-
-              <button
-                onClick={getScreenshot}
-                disabled={isLoading || sessionStatus !== "CONNECTED"}
-                className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed shadow-lg"
-              >
-                <Camera className="w-5 h-5 mr-2" />
-                Take Screenshot
-              </button>
-
-              {screenshot && (
-                <div className="mt-4">
-                  <img
-                    src={screenshot}
-                    alt="WhatsApp Web Screenshot"
-                    className="w-full rounded-xl border border-gray-200 dark:border-gray-700"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* System Info */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
-              <Settings className="w-6 h-6 text-gray-500 mr-3" />
-              System Information
-            </h3>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">
-                  API Base URL:
-                </span>
-                <span className="text-gray-900 dark:text-white font-mono text-sm">
-                  {axiosInstance.defaults.baseURL}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Session ID:
-                </span>
-                <span className="text-gray-900 dark:text-white font-mono text-sm">
-                  {sessionId}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Auto Refresh:
-                </span>
-                <span
-                  className={`text-sm font-medium ${
-                    autoRefresh
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-gray-500"
-                  }`}
-                >
-                  {autoRefresh ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600 dark:text-gray-400">
-                  Connection Status:
-                </span>
-                <div className="flex items-center space-x-2">
-                  {getStatusIcon(sessionStatus)}
-                  <span
-                    className={`text-sm font-medium ${getStatusColor(
-                      sessionStatus
-                    )}`}
-                  >
-                    {sessionStatus.replace("_", " ").toLowerCase()}
-                  </span>
-                </div>
-              </div>
-
-              {/* Health Check */}
-              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={async () => {
-                    try {
-                      const response = await axiosInstance.get(
-                        "/whatsapp/ping"
-                      );
-                      addNotification(
-                        "success",
-                        `API Health Check: ${
-                          response.data.message || "API is working!"
-                        }`
-                      );
-                    } catch (error) {
-                      addNotification(
-                        "error",
-                        `API Health Check Failed: ${error.message}`
-                      );
-                    }
-                  }}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none disabled:cursor-not-allowed shadow-lg"
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  Ping API
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Help & Instructions */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-2xl p-8">
-          <div className="flex items-start">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl mr-6 mt-1">
-              <AlertCircle className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h4 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Setup Instructions
-              </h4>
-              <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
-                <div>
-                  <h5 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    First Time Setup:
-                  </h5>
-                  <ol className="list-decimal list-inside space-y-2 ml-4">
-                    <li>
-                      Click "Start Session" to initialize the WhatsApp Web
-                      connection
-                    </li>
-                    <li>
-                      Either scan the QR code with your phone or use phone
-                      number pairing
-                    </li>
-                    <li>Wait for the status to show "CONNECTED"</li>
-                    <li>Test the connection by sending a test message</li>
-                  </ol>
-                </div>
-
-                <div>
-                  <h5 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    QR Code Method:
-                  </h5>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>Open WhatsApp on your phone</li>
-                    <li>Go to Settings → Linked Devices</li>
-                    <li>Tap "Link a Device" and scan the QR code</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h5 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    Phone Pairing Method:
-                  </h5>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>
-                      Enter your phone number in international format (without
-                      +)
-                    </li>
-                    <li>Click "Request Pairing Code"</li>
-                    <li>Enter the received code in your WhatsApp mobile app</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h5 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    Troubleshooting:
-                  </h5>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
-                    <li>
-                      If QR code expires, click the refresh button to generate a
-                      new one
-                    </li>
-                    <li>
-                      Enable "Auto Refresh" to automatically check status and
-                      update QR codes
-                    </li>
-                    <li>
-                      Use "Restart Session" if the connection becomes unstable
-                    </li>
-                    <li>Take screenshots to debug connection issues</li>
-                    <li>Use the ping test to verify API connectivity</li>
-                  </ul>
-                </div>
-
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mt-6">
-                  <div className="flex items-start">
-                    <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-3 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h6 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
-                        Important Notes:
-                      </h6>
-                      <ul className="text-yellow-700 dark:text-yellow-300 space-y-1 text-sm">
-                        <li>
-                          • Keep this browser tab open to maintain the WhatsApp
-                          connection
-                        </li>
-                        <li>
-                          • The session will persist across browser restarts if
-                          properly connected
-                        </li>
-                        <li>
-                          • Only one WhatsApp Web session can be active at a
-                          time per phone number
-                        </li>
-                        <li>
-                          • Test messages are sent from your business WhatsApp
-                          account
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+     
       </div>
     </div>
   );

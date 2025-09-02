@@ -6,6 +6,7 @@ class WhatsAppProxy {
     this.whatsappBaseURL =
       process.env.WHATSAPP_API_URL || "http://localhost:3000";
     this.apiKey = "MAHAD"; // Make sure this matches your WhatsApp API server's expected key
+    this.sessionId = "raza-catering-session"; // Default session ID
   }
 
   async makeRequest(endpoint, options = {}) {
@@ -31,171 +32,157 @@ class WhatsAppProxy {
     }
   }
 
+  // Session Management Methods
+  async getSessionStatus() {
+    return this.makeRequest(`/session/status/${this.sessionId}`);
+  }
+
+  async startSession() {
+    return this.makeRequest(`/session/start/${this.sessionId}`);
+  }
+
+  async stopSession() {
+    return this.makeRequest(`/session/stop/${this.sessionId}`);
+  }
+
+  async restartSession() {
+    return this.makeRequest(`/session/restart/${this.sessionId}`);
+  }
+
+  async getQRCode() {
+    return this.makeRequest(`/session/qr/${this.sessionId}`);
+  }
+
   async getQRCodeImage() {
-    return this.makeRequest("/session/qr/raza-catering-session/image", {
+    return this.makeRequest(`/session/qr/${this.sessionId}/image`, {
       method: "GET",
       responseType: "blob",
     });
   }
 
-  // Fixed: Send text message with proper structure
-  async sendMessage(phoneNumber, message) {
-    const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "string", // Required field
-      content: message, // Changed from 'message' to 'content'
-    };
-    console.log(payload);
+  async requestPairingCode(phoneNumber) {
+    return this.makeRequest(`/session/pairing-code/${this.sessionId}`, {
+      method: "POST",
+      data: { phoneNumber },
+    });
+  }
 
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
+  async getAllSessions() {
+    return this.makeRequest("/sessions");
+  }
+
+  async pingServer() {
+    return this.makeRequest("/ping");
+  }
+
+  // Messaging Methods - Updated to match your server's API
+ async sendMessage(phoneNumber, message) {
+  const payload = {
+    phoneNumber: this.formatPhoneNumber(phoneNumber),
+    message: message,
+  };
+
+  return this.makeRequest(`/message/text/${this.sessionId}`, {
+    method: "POST",
+    data: payload,
+  });
+}
+
+  // Send media from base64 data
+async sendImageFile(
+  phoneNumber,
+  imageBase64,
+  filename = "image.jpg",
+  mimetype = "image/jpeg", 
+  caption = ""
+) {
+  const payload = {
+    phoneNumber: this.formatPhoneNumber(phoneNumber),
+    mediaData: imageBase64,
+    mimeType: mimetype,
+    filename: filename,
+    caption: caption,
+  };
+
+  return this.makeRequest(`/message/media-base64/${this.sessionId}`, {
+    method: "POST",
+    data: payload,
+  });
+}
+
+  // Send media from URL
+  async sendImageFromURL(phoneNumber, imageUrl, caption = "", filename = "") {
+    const payload = {
+      phoneNumber: phoneNumber,
+      mediaUrl: imageUrl,
+      caption: caption,
+      filename: filename,
+    };
+
+    return this.makeRequest(`/message/media-url/${this.sessionId}`, {
       method: "POST",
       data: payload,
     });
   }
 
-  // New: Send image file
-  async sendImageFile(
+  // Send document file
+  async sendDocument(
     phoneNumber,
-    imageBase64,
-    filename = "image.jpg",
-    mimetype = "image/jpeg"
+    documentBase64,
+    filename,
+    mimetype,
+    caption = ""
   ) {
     const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "MessageMedia",
-      content: {
-        mimetype: mimetype,
-        data: imageBase64, // Base64 encoded image data
-        filename: filename,
+      phoneNumber: phoneNumber,
+      mediaData: documentBase64,
+      mimeType: mimetype,
+      filename: filename,
+      caption: caption,
+    };
+
+    return this.makeRequest(`/message/media-base64/${this.sessionId}`, {
+      method: "POST",
+      data: payload,
+    });
+  }
+
+  // Send media with multipart form data (for file uploads)
+  async sendMediaFile(phoneNumber, file, caption = "") {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('phoneNumber', phoneNumber);
+    formData.append('caption', caption);
+
+    return this.makeRequest(`/message/media/${this.sessionId}`, {
+      method: "POST",
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
       },
-    };
-
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
-      method: "POST",
-      data: payload,
     });
   }
 
-  // New: Send image from URL
-  async sendImageFromURL(phoneNumber, imageUrl, options = {}) {
-    const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "MessageMediaFromURL",
-      content: imageUrl,
-      options: options,
-    };
-
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
-      method: "POST",
-      data: payload,
-    });
-  }
-
-  // New: Send document file
-  async sendDocument(phoneNumber, documentBase64, filename, mimetype) {
-    const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "MessageMedia",
-      content: {
-        mimetype: mimetype,
-        data: documentBase64,
-        filename: filename,
-      },
-    };
-
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
-      method: "POST",
-      data: payload,
-    });
-  }
-
-  // New: Send location
+  // Note: Your primary server doesn't have these endpoints, but keeping them for compatibility
+  // You would need to implement these on your primary server if needed
   async sendLocation(phoneNumber, latitude, longitude, description = "") {
-    const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "Location",
-      content: {
-        latitude: latitude,
-        longitude: longitude,
-        description: description,
-      },
-    };
-
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
-      method: "POST",
-      data: payload,
-    });
+    throw new Error("Location sending not implemented in primary server");
   }
 
-  // New: Send contact
   async sendContact(phoneNumber, contactPhoneNumber) {
-    const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "Contact",
-      content: {
-        contactId: `${contactPhoneNumber.replace(/\D/g, "")}@c.us`,
-      },
-    };
-
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
-      method: "POST",
-      data: payload,
-    });
+    throw new Error("Contact sending not implemented in primary server");
   }
 
-  // New: Send poll
   async sendPoll(
     phoneNumber,
     pollName,
     pollOptions,
     allowMultipleAnswers = false
   ) {
-    const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "Poll",
-      content: {
-        pollName: pollName,
-        pollOptions: pollOptions,
-        options: {
-          allowMultipleAnswers: allowMultipleAnswers,
-        },
-      },
-    };
-
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
-      method: "POST",
-      data: payload,
-    });
+    throw new Error("Poll sending not implemented in primary server");
   }
 
-  // New: Send text with media attachment
-  async sendTextWithMedia(
-    phoneNumber,
-    message,
-    imageBase64,
-    filename = "image.jpg",
-    mimetype = "image/jpeg"
-  ) {
-    const payload = {
-      chatId: `${phoneNumber.replace(/\D/g, "")}@c.us`,
-      contentType: "string",
-      content: message,
-      options: {
-        media: {
-          mimetype: mimetype,
-          data: imageBase64,
-          filename: filename,
-        },
-      },
-    };
-
-    return this.makeRequest("/client/sendMessage/raza-catering-session", {
-      method: "POST",
-      data: payload,
-    });
-  }
-
-  // Helper: Convert file to base64
+  // Helper methods
   fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -209,12 +196,69 @@ class WhatsAppProxy {
     });
   }
 
-  async getSessionStatus() {
-    return this.makeRequest("/session/status/raza-catering-session");
+  // Format phone number for WhatsApp (remove non-digits)
+  formatPhoneNumber(phoneNumber) {
+    return phoneNumber.replace(/\D/g, "");
   }
 
-  async startSession() {
-    return this.makeRequest("/session/start/raza-catering-session");
+  // Convert file to base64 and send as image
+  async sendFileAsImage(phoneNumber, file, caption = "") {
+    try {
+      const base64 = await this.fileToBase64(file);
+      return await this.sendImageFile(
+        phoneNumber,
+        base64,
+        file.name,
+        file.type,
+        caption
+      );
+    } catch (error) {
+      throw new Error(`Failed to send file as image: ${error.message}`);
+    }
+  }
+
+  // Batch send messages
+  async sendBatchMessages(messages) {
+    const results = [];
+    for (const { phoneNumber, message } of messages) {
+      try {
+        const result = await this.sendMessage(phoneNumber, message);
+        results.push({ phoneNumber, success: true, result });
+      } catch (error) {
+        results.push({ phoneNumber, success: false, error: error.message });
+      }
+    }
+    return results;
+  }
+
+  // Check if session is ready
+  async isSessionReady() {
+    try {
+      const status = await this.getSessionStatus();
+      return status.isReady === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Wait for session to be ready (with timeout)
+  async waitForSession(timeoutMs = 60000) {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const isReady = await this.isSessionReady();
+        if (isReady) {
+          return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+      } catch (error) {
+        console.log("Waiting for session...");
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
+    
+    throw new Error("Session timeout: WhatsApp session not ready");
   }
 }
 

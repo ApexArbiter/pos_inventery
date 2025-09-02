@@ -100,5 +100,45 @@ router.get("/ping", async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+// Add this endpoint
+router.post("/:id/send-bill", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageData } = req.body;
+
+    // Get order details
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: "Order not found" });
+    }
+
+    // Convert base64 to just the data part
+    const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    // Send via WhatsApp
+    const whatsappResponse = await whatsappProxy.sendImageFile(
+      order.customer.whatsapp,
+      base64Data,
+      `bill-${order.orderNumber}.png`,
+      "image/png",
+      `📄 Your order bill #${
+        order.orderNumber
+      }\nTotal: £${order.finalAmount.toFixed(2)}\nThank you for your order! 🍽️`
+    );
+
+    res.json({
+      success: true,
+      data: {
+        sentTo: order.customer.whatsapp,
+        billImageUrl: imageData, // Return the image data
+        whatsappMessageId: whatsappResponse.messageId,
+      },
+    });
+  } catch (error) {
+    console.error("Error sending bill:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 
 export default router;
