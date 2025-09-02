@@ -1,8 +1,8 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "https://cathering-app-eight.vercel.app/api",
-  // baseURL: "http://localhost:5001/api",
+  // baseURL: "https://cathering-app-eight.vercel.app/api",
+  baseURL: "http://localhost:5001/api",
   // baseURL: "https://cathering-app.onrender.com/api",
   headers: {
     "Content-Type": "application/json",

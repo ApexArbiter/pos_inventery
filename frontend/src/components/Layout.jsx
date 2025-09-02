@@ -11,6 +11,7 @@ import {
   Sun,
   ChefHat,
   LogOut,
+  MessageCircle, // Added for WhatsApp
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 import logo from "../assets/logo.png";
@@ -20,7 +21,7 @@ import axiosInstance from "../api/axiosInstance";
 
 const Layout = ({ children, currentPage, onPageChange }) => {
   const { isDark, toggleTheme } = useTheme();
-  const { isLoading, logout, user } = useAuth(); // Assuming useAuth is imported from AuthContext
+  const { isLoading, logout, user } = useAuth();
 
   // Define all menu items
   const allMenuItems = [
@@ -34,8 +35,13 @@ const Layout = ({ children, currentPage, onPageChange }) => {
     { id: "dishes", label: "Dishes", icon: ChefHat, adminOnly: false },
     { id: "customers", label: "Users", icon: Users, adminOnly: true },
     { id: "queries", label: "Queries", icon: MessageSquare, adminOnly: false },
-    // { id: "invoices", label: "Invoices", icon: FileText, adminOnly: false },
     { id: "settings", label: "Documents", icon: FileText, adminOnly: true },
+    {
+      id: "whatsapp",
+      label: "WhatsApp Settings",
+      icon: MessageCircle,
+      adminOnly: true, // Only admins can manage WhatsApp settings
+    },
   ];
 
   // Filter menu items based on user role
@@ -68,7 +74,7 @@ const Layout = ({ children, currentPage, onPageChange }) => {
       <div className="w-64 bg-white dark:bg-gray-800 shadow-xl flex-shrink-0 border-r border-gray-200 dark:border-gray-700 transition-all duration-300">
         <div className="py-2 px-2 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-3">
-            <div className="   transform transition-transform duration-200 hover:scale-105">
+            <div className="transform transition-transform duration-200 hover:scale-105">
               <img className="w-20 h-20 object-contain" src={logo} alt="Logo" />
             </div>
 
@@ -103,6 +109,8 @@ const Layout = ({ children, currentPage, onPageChange }) => {
                   className={`w-5 h-5 mr-3 transition-all duration-200 ${
                     currentPage === item.id
                       ? "text-white"
+                      : item.id === "whatsapp"
+                      ? "text-green-500 dark:text-green-400 group-hover:text-green-600 dark:group-hover:text-green-300"
                       : "text-gray-500 dark:text-gray-400 group-hover:text-orange-500 dark:group-hover:text-orange-400"
                   }`}
                 />
@@ -114,9 +122,6 @@ const Layout = ({ children, currentPage, onPageChange }) => {
             );
           })}
         </nav>
-        {/* <button onClick={handleSendRequest}>
-          Send Request to WhatsApp Test API
-        </button> */}
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
@@ -133,9 +138,13 @@ const Layout = ({ children, currentPage, onPageChange }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white capitalize transition-colors duration-200">
-                {currentPage}
+                {currentPage === "whatsapp" ? "WhatsApp Settings" : currentPage}
               </h2>
-              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <div
+                className={`w-2 h-2 rounded-full animate-pulse ${
+                  currentPage === "whatsapp" ? "bg-green-500" : "bg-orange-500"
+                }`}
+              ></div>
             </div>
             <div className="flex items-center space-x-3">
               <button
@@ -151,13 +160,6 @@ const Layout = ({ children, currentPage, onPageChange }) => {
                   )}
                 </div>
               </button>
-
-              {/* <button className="relative p-2.5 text-gray-500 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all duration-200 transform hover:scale-105 group">
-                <Bell className="w-5 h-5" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse">
-                  <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
-                </div>
-              </button> */}
 
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700">
                 <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center shadow-lg transform transition-all duration-200 hover:scale-105 cursor-pointer group">
@@ -178,7 +180,6 @@ const Layout = ({ children, currentPage, onPageChange }) => {
                   </p>
                 </div>
 
-                {/* Beautiful Logout Button - Always visible now */}
                 <button
                   onClick={handleLogout}
                   className="group flex items-center space-x-2 px-4 py-2 ml-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm font-medium rounded-lg shadow-lg shadow-red-500/25 transition-all duration-200 transform hover:scale-105 hover:shadow-red-500/40"

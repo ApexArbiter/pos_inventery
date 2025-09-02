@@ -11,10 +11,11 @@ import Invoices from "./components/Invoices";
 import Settings from "./components/Settings.jsx";
 import AuthPages from "./pages/AuthPages.jsx";
 import { useAuth } from "./contexts/AuthContext.jsx";
+import WhatsAppSettings from "./components/WhatsAppSettings.jsx";
 
 function App() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
-  
+
   // Fix: Add null check for user before accessing role
   const [currentPage, setCurrentPage] = useState(
     user?.role === "admin" ? "dashboard" : "orders"
@@ -41,6 +42,8 @@ function App() {
         return <Queries />;
       case "invoices":
         return <Invoices />;
+      case "whatsapp":
+        return <WhatsAppSettings />;
       case "settings":
         // Additional check: only render settings if user is admin
         return user?.role === "admin" ? <Settings /> : <Orders />;
@@ -53,13 +56,13 @@ function App() {
   const handlePageChange = (page) => {
     // Check if the page requires admin access
     const adminOnlyPages = ["dashboard", "customers", "invoices", "settings"];
-    
+
     if (adminOnlyPages.includes(page) && user?.role !== "admin") {
       // Don't change the page for non-admin users trying to access admin pages
       console.log(`Access denied: ${page} requires admin privileges`);
       return; // Early return prevents setCurrentPage from being called
     }
-    
+
     // Allow navigation for valid pages
     setCurrentPage(page);
   };
@@ -67,9 +70,11 @@ function App() {
   // Check if current user is on an admin page and redirect them
   React.useEffect(() => {
     const adminOnlyPages = ["dashboard", "customers", "invoices", "settings"];
-    
+
     if (user?.role !== "admin" && adminOnlyPages.includes(currentPage)) {
-      console.log(`Redirecting non-admin user from ${currentPage} to orders page`);
+      console.log(
+        `Redirecting non-admin user from ${currentPage} to orders page`
+      );
       setCurrentPage("orders");
     }
   }, [user, currentPage]);

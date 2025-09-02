@@ -8,6 +8,7 @@ import cors from "cors";
 import productRoute from "./routes/product.route.js";
 import userRoute from "./routes/users.route.js";
 import orderRoute from "./routes/order.route.js";
+import whatsappRoutes from "./routes/whatsapp.route.js";
 
 const app = express();
 dotenv.config();
@@ -33,6 +34,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/user", userRoute);
 app.use("/api/products", productRoute);
 app.use("/api/orders", orderRoute);
+app.use("/api/whatsapp", whatsappRoutes);
 connectdb();
 
 app.listen(5001, () => {
