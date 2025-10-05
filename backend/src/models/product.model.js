@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const productSchema = new mongoose.Schema(
   {
@@ -57,16 +57,6 @@ const productSchema = new mongoose.Schema(
     },
     
     // Tax Information
-    gstRate: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100,
-    },
-    hsnCode: {
-      type: String,
-      trim: true,
-    },
     
     // Product Specifications
     unit: {
@@ -209,14 +199,6 @@ productSchema.virtual("primaryImage").get(function () {
 });
 
 // Method to check if product is low in stock
-productSchema.methods.isLowStock = function (currentStock) {
-  return currentStock <= this.reorderPoint;
-};
-
-// Method to check if product is out of stock
-productSchema.methods.isOutOfStock = function (currentStock) {
-  return currentStock <= 0;
-};
 
 // Static method to search products
 productSchema.statics.searchProducts = function (storeId, query, options = {}) {

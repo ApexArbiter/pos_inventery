@@ -1,5 +1,5 @@
 // routes/order.routes.js - SIMPLIFIED (REMOVED PDF ROUTES)
-import express from "express";
+const express = require('express');
 import {
   getAllOrders,
   getOrderById,

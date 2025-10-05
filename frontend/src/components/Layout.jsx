@@ -164,12 +164,12 @@ const Layout = ({ children, currentPage, onPageChange }) => {
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-200 dark:border-gray-700">
                 <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center shadow-lg transform transition-all duration-200 hover:scale-105 cursor-pointer group">
                   <span className="text-white text-sm font-bold group-hover:scale-110 transition-transform duration-200">
-                    {user?.fullName?.charAt(0) || "A"}
+                    {user?.fullName?.charAt(0) || user?.name?.charAt(0) || "A"}
                   </span>
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-sm font-medium text-gray-800 dark:text-white">
-                    {user?.fullName || "Admin User"}
+                    {user?.fullName || user?.name || "Admin User"}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {user?.role === "admin"

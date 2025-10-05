@@ -1,5 +1,5 @@
 // routes/whatsapp.route.js
-import express from "express";
+const express = require('express');
 import { whatsappProxy } from "../lib/whatsappProxy.js";
 import axios from "axios";
 

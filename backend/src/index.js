@@ -1,4 +1,4 @@
-import express from "express";
+const express = require('express');
 import authRoutes from "./routes/auth.route.js";
 import dotenv from "dotenv";
 import { connectdb } from "./lib/db.js";

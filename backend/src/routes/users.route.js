@@ -1,4 +1,4 @@
-import express from "express";
+const express = require('express');
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { getAllUsers, toggleAuthenticationStatus, updateUserDetails } from "../controllers/users.controller.js";
 

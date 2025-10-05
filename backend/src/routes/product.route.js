@@ -1,4 +1,4 @@
-import express from "express";
+import express from 'express';
 import {
   getAllProducts,
   getProductById,
@@ -10,25 +10,24 @@ import {
   createCategory,      
   deleteCategory,      
 } from "../controllers/product.controller.js";
-import { protectRoute } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
 // IMPORTANT: Put specific routes BEFORE parameterized routes
-router.get("/categories", protectRoute, getAllCategories);
-router.post("/categories", protectRoute, createCategory);
-router.delete("/categories/:id", protectRoute, deleteCategory);
+router.get("/categories", getAllCategories);
+router.post("/categories", createCategory);
+router.delete("/categories/:id", deleteCategory);
 
 // General product routes
-router.get("/", protectRoute, getAllProducts);
-router.get("/category/:category", protectRoute, getProductsByCategory);
+router.get("/", getAllProducts);
+router.get("/category/:category", getProductsByCategory);
 
 // Product CRUD operations
-router.post("/", protectRoute, createProduct); // Removed duplicate protectRoute
-router.put("/:id", protectRoute, updateProduct); // Removed duplicate protectRoute
-router.delete("/:id", protectRoute, deleteProduct); // Removed duplicate protectRoute
+router.post("/", createProduct);
+router.put("/:id", updateProduct);
+router.delete("/:id", deleteProduct);
 
 // This should be LAST because it catches any /:id pattern
-router.get("/:id", protectRoute, getProductById);
+router.get("/:id", getProductById);
 
 export default router;

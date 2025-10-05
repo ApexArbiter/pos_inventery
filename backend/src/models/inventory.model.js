@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const stockMovementSchema = new mongoose.Schema({
   type: {
@@ -41,6 +41,22 @@ const inventorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
       required: true,
+    },
+    productDetails: {
+      productName: { type: String, required: true },
+      barcode: { type: String },
+      description: { type: String },
+      category: { type: String },
+      mrp: { type: Number },
+      sellingPrice: { type: Number, required: true },
+      costPrice: { type: Number, required: true },
+      unit: { type: String, default: 'pcs' },
+      images: [{ type: String }],
+      isActive: { type: Boolean, default: true },
+      isReturnable: { type: Boolean, default: true },
+      minStockLevel: { type: Number, default: 10 },
+      maxStockLevel: { type: Number, default: 100 },
+      reorderPoint: { type: Number, default: 15 }
     },
     storeId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -157,7 +173,7 @@ inventorySchema.pre("save", function (next) {
   this.availableStock = Math.max(0, this.currentStock - this.reservedStock);
   
   // Update total value
-  this.totalValue = this.currentStock * this.averageCost;
+  this.totalValue = this.currentStock * (this.productDetails?.costPrice || 0);
   
   // Check for alerts
   this.checkAlerts();

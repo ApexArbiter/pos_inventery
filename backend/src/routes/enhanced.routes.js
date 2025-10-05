@@ -1,4 +1,4 @@
-import express from "express";
+const express = require('express');
 
 // Import Controllers
 import * as authController from "../controllers/auth.controller.enhanced.js";

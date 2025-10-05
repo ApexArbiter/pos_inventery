@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require('mongoose');
 
 const paymentHistorySchema = new mongoose.Schema({
   amount: {
@@ -424,4 +424,4 @@ subscriptionSchema.statics.getRevenueAnalytics = function (startDate, endDate) {
 
 const Subscription = mongoose.model("Subscription", subscriptionSchema);
 
-export default Subscription;
+module.exports = Subscription;

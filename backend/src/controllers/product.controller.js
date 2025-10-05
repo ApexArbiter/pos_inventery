@@ -40,7 +40,8 @@ export const getAllProducts = async (req, res) => {
     const total = await Product.countDocuments(filter);
 
     res.status(200).json({
-      products,
+      success: true,
+      data: products,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -65,7 +66,10 @@ export const getProductById = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    res.status(200).json(product);
+    res.status(200).json({
+      success: true,
+      data: product
+    });
   } catch (error) {
     console.error("Error in getProductById: ", error.message);
     res.status(500).json({ error: "Internal server error" });
@@ -76,79 +80,103 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const {
-      name,
-      items,
-      description,
+      productName,
+      barcode,
       category,
-      subCategory,
-      price,
-      minPersons,
-      discountedPrice,
-      notes,
-      isVegetarian,
-      image,
+      sellingPrice,
+      costPrice,
+      description,
+      gstRate,
+      hsnCode,
+      unit,
+      images,
+      createdBy,
+      storeId,
+      mrp
     } = req.body;
 
     // Validate required fields
-    if (!name || !description || !category || !price) {
+    if (!productName || !sellingPrice || !costPrice) {
       return res.status(400).json({
-        error:
-          "Missing required fields: name, description, category, and price are required",
+        success: false,
+        message: "Product name, selling price, and cost price are required"
       });
     }
 
-    // Parse items if it's a string
-    let parsedItems = items;
-    if (typeof items === "string") {
-      try {
-        parsedItems = JSON.parse(items);
-      } catch (e) {
-        parsedItems = items.split(",").map((item) => item.trim());
-      }
-    }
+    // Set mrp if not provided
+    const mrpValue = mrp || sellingPrice;
 
-    // Handle image upload to Cloudinary
-    let imageUrl = null;
-    if (image) {
-      try {
-        const uploadResponse = await cloudinary.uploader.upload(image, {
-          folder: "products",
-          resource_type: "image",
-        });
-        imageUrl = uploadResponse.secure_url;
-      } catch (uploadError) {
-        console.error("Error uploading image to Cloudinary:", uploadError);
-        return res.status(400).json({
-          error: "Failed to upload image. Please try again.",
-        });
-      }
-    }
-
+    // Create new product
     const newProduct = new Product({
-      name,
-      items: parsedItems || [],
-      description,
+      productName,
+      barcode: barcode || Date.now().toString(),
       category,
-      subCategory,
-      price: parseFloat(price),
-      minPersons: minPersons ? parseInt(minPersons) : undefined,
-      discountedPrice: discountedPrice
-        ? parseFloat(discountedPrice)
-        : undefined,
-      notes,
-      isVegetarian: isVegetarian === "true" || isVegetarian === true,
-      image: imageUrl,
+      mrp: parseFloat(mrpValue),
+      sellingPrice: parseFloat(sellingPrice),
+      costPrice: parseFloat(costPrice),
+      description: description || 'No description provided',
+      gstRate: parseFloat(gstRate) || 18,
+      hsnCode: hsnCode || '',
+      unit: unit || 'pcs',
+      images: images || [],
+      createdBy,
+      storeId,
+      isActive: true,
+      isReturnable: true
     });
 
     const savedProduct = await newProduct.save();
 
+    // Create inventory record for this product
+    try {
+      const Inventory = (await import('../models/inventory.model.js')).default;
+      const inventoryRecord = new Inventory({
+        productId: savedProduct._id,
+        productDetails: {
+          productName: savedProduct.productName,
+          barcode: savedProduct.barcode,
+          description: savedProduct.description,
+          category: savedProduct.category,
+          mrp: savedProduct.mrp,
+          sellingPrice: savedProduct.sellingPrice,
+          costPrice: savedProduct.costPrice,
+          unit: savedProduct.unit,
+          images: savedProduct.images || [],
+          isActive: savedProduct.isActive,
+          isReturnable: savedProduct.isReturnable,
+          minStockLevel: savedProduct.minStockLevel || 10,
+          maxStockLevel: savedProduct.maxStockLevel || 100,
+          reorderPoint: savedProduct.reorderPoint || 15
+        },
+        storeId: savedProduct.storeId,
+        currentStock: savedProduct.currentStock,
+        lastUpdated: new Date(),
+        movements: [{
+          type: 'initial_stock',
+          quantity: savedProduct.currentStock,
+          reason: 'Initial stock when product was created',
+          timestamp: new Date()
+        }]
+      });
+      await inventoryRecord.save();
+      console.log('Inventory record created for product:', savedProduct.productName);
+    } catch (inventoryError) {
+      console.error('Error creating inventory record:', inventoryError);
+      // Don't fail the product creation if inventory creation fails
+    }
+
     res.status(201).json({
-      message: "Product created successfully",
-      product: savedProduct,
+      success: true,
+      data: savedProduct,
+      message: 'Product created successfully'
     });
   } catch (error) {
     console.error("Error in createProduct: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 
@@ -157,89 +185,55 @@ export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      name,
-      items,
-      description,
+      productName,
+      barcode,
       category,
-      subCategory,
-      price,
-      minPersons,
-      discountedPrice,
-      notes,
-      isVegetarian,
-      image, // Can be a URL, base64 string, or empty
+      sellingPrice,
+      costPrice,
+      description,
+      gstRate,
+      hsnCode,
+      unit,
+      images
     } = req.body;
 
-    const product = await Product.findById(id);
-    if (!product) {
-      return res.status(404).json({ error: "Product not found" });
+    const updateData = {};
+    if (productName) updateData.productName = productName;
+    if (barcode) updateData.barcode = barcode;
+    if (category) updateData.category = category;
+    if (sellingPrice) updateData.sellingPrice = parseFloat(sellingPrice);
+    if (costPrice) updateData.costPrice = parseFloat(costPrice);
+    if (description) updateData.description = description;
+    if (gstRate) updateData.gstRate = parseFloat(gstRate);
+    if (hsnCode) updateData.hsnCode = hsnCode;
+    if (unit) updateData.unit = unit;
+    if (images) updateData.images = images;
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found"
+      });
     }
-
-    // Parse items if needed
-    let parsedItems = items;
-    if (typeof items === "string") {
-      try {
-        parsedItems = JSON.parse(items);
-      } catch (e) {
-        parsedItems = items.split(",").map((item) => item.trim());
-      }
-    }
-
-    // Handle image logic
-    let imageUrl = product.image;
-
-    if (image) {
-      if (image.startsWith("http")) {
-        // Case 1: image is an existing URL from frontend — keep it
-        imageUrl = image;
-      } else {
-        // Case 3: new file (e.g., base64) — upload to Cloudinary
-        try {
-          const uploadResponse = await cloudinary.uploader.upload(image, {
-            folder: "products",
-            resource_type: "image",
-          });
-          imageUrl = uploadResponse.secure_url;
-        } catch (uploadError) {
-          console.error("Error uploading image to Cloudinary:", uploadError);
-          return res.status(400).json({ error: "Failed to upload image." });
-        }
-      }
-    } else {
-      // Case 2: image is not provided — treat as removal
-      imageUrl = ""; // or `null`, based on your DB schema
-    }
-
-    const updateData = {
-      name: name || product.name,
-      items: parsedItems !== undefined ? parsedItems : product.items,
-      description: description || product.description,
-      category: category || product.category,
-      subCategory: subCategory || product.subCategory,
-      price: price ? parseFloat(price) : product.price,
-      minPersons: minPersons ? parseInt(minPersons) : product.minPersons,
-      discountedPrice: discountedPrice
-        ? parseFloat(discountedPrice)
-        : product.discountedPrice,
-      notes: notes !== undefined ? notes : product.notes,
-      isVegetarian:
-        isVegetarian !== undefined
-          ? isVegetarian === "true" || isVegetarian === true
-          : product.isVegetarian,
-      image: imageUrl,
-    };
-
-    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
 
     res.status(200).json({
-      message: "Product updated successfully",
-      product: updatedProduct,
+      success: true,
+      data: updatedProduct,
+      message: 'Product updated successfully'
     });
   } catch (error) {
     console.error("Error in updateProduct: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 
@@ -251,16 +245,23 @@ export const deleteProduct = async (req, res) => {
     const deletedProduct = await Product.findByIdAndDelete(id);
 
     if (!deletedProduct) {
-      return res.status(404).json({ error: "Product not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Product not found"
+      });
     }
 
     res.status(200).json({
-      message: "Product deleted successfully",
-      product: deletedProduct,
+      success: true,
+      message: "Product deleted successfully"
     });
   } catch (error) {
     console.error("Error in deleteProduct: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 
@@ -271,10 +272,17 @@ export const getProductsByCategory = async (req, res) => {
 
     const products = await Product.find({ category }).sort({ name: 1 });
 
-    res.status(200).json(products);
+    res.status(200).json({
+      success: true,
+      data: products
+    });
   } catch (error) {
     console.error("Error in getProductsByCategory: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 
@@ -284,10 +292,17 @@ export const getAllCategories = async (req, res) => {
     const categories = await Category.find({ isActive: true }).sort({
       name: 1,
     });
-    res.status(200).json(categories);
+    res.status(200).json({
+      success: true,
+      data: categories
+    });
   } catch (error) {
     console.error("Error in getAllCategories: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 
@@ -296,29 +311,32 @@ export const createCategory = async (req, res) => {
   try {
     const { name } = req.body;
 
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Category name is required" });
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Category name is required"
+      });
     }
 
-    // Check if category already exists
-    const existingCategory = await Category.findOne({
-      name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
+    const newCategory = new Category({
+      name,
+      isActive: true,
     });
 
-    if (existingCategory) {
-      return res.status(400).json({ error: "Category already exists" });
-    }
-
-    const newCategory = new Category({ name: name.trim() });
     const savedCategory = await newCategory.save();
 
     res.status(201).json({
-      message: "Category created successfully",
-      category: savedCategory,
+      success: true,
+      data: savedCategory,
+      message: 'Category created successfully'
     });
   } catch (error) {
     console.error("Error in createCategory: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };
 
@@ -327,38 +345,25 @@ export const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if category exists
-    const category = await Category.findById(id);
+    const category = await Category.findByIdAndDelete(id);
+
     if (!category) {
-      return res.status(404).json({ error: "Category not found" });
-    }
-
-    // Check if it's a default category
-    if (category.isDefault) {
-      return res.status(400).json({ 
-        error: "Cannot delete default category" 
+      return res.status(404).json({
+        success: false,
+        message: "Category not found"
       });
     }
-
-    // Check if any products are using this category
-    const productsUsingCategory = await Product.countDocuments({ 
-      category: category.name 
-    });
-
-    if (productsUsingCategory > 0) {
-      return res.status(400).json({ 
-        error: `Cannot delete category. ${productsUsingCategory} product(s) are using this category.` 
-      });
-    }
-
-    await Category.findByIdAndDelete(id);
 
     res.status(200).json({
-      message: "Category deleted successfully",
-      category: category,
+      success: true,
+      message: "Category deleted successfully"
     });
   } catch (error) {
     console.error("Error in deleteCategory: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ 
+      success: false,
+      error: "Internal server error",
+      message: error.message
+    });
   }
 };

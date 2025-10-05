@@ -10,7 +10,37 @@ cloudinary.config({
   secure: true,
 });
 
-// Upload bill image to Cloudinary
+// Upload image to Cloudinary (supports both buffer and file path)
+export const uploadImage = async (imagePath, folder = 'general') => {
+  return new Promise((resolve, reject) => {
+    const publicId = `${folder}_${Date.now()}`;
+    
+    cloudinary.uploader.upload(
+      imagePath,
+      {
+        resource_type: 'image',
+        folder: folder,
+        public_id: publicId,
+        type: 'upload',
+        access_mode: 'public',
+        use_filename: false,
+        unique_filename: false,
+        overwrite: true,
+      },
+      (error, result) => {
+        if (error) {
+          console.error('Error uploading image to Cloudinary:', error);
+          return reject(new Error('Failed to upload image to Cloudinary'));
+        }
+        
+        console.log('✅ Image uploaded to Cloudinary:', result.secure_url);
+        resolve(result);
+      }
+    );
+  });
+};
+
+// Upload bill image to Cloudinary (legacy function)
 export const uploadBillImage = async (imageBuffer, orderNumber) => {
   return new Promise((resolve, reject) => {
     const publicId = `bill_${orderNumber}_${Date.now()}`;
