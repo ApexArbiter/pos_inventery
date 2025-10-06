@@ -665,3 +665,7 @@ The system is designed to handle the complexities of modern retail operations wh
 **Last Updated**: December 2024  
 **Version**: 2.0.0  
 **Status**: Ready for Implementation
+you know that the admins routes are not working so what you can do is to show the products number you can call the product api and can show the product count same for the revenure you can add the bill data each bill price and can get the revenue and also same with the stock things.
+one more thing now the UI of the App is looking very bad the icons are not working and UI is very very bad no animation anything
+i have installed these now move forword
+npm install react-native-vector-icons react-native-animatable
