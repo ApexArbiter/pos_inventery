@@ -1,0 +1,71 @@
+DASH WHATSAPP - CUSTOM CATERING MANAGEMENT SYSTEM
+====================================================
+
+PROJECT OVERVIEW:
+This is a complete catering management system with 4 main components:
+1. Web Frontend (React.js)
+2. Backend API Server (Node.js + MongoDB)
+3. WhatsApp Integration Service (Node.js)
+4. Mobile POS App (React Native)
+
+CORE FEATURES:
+==============
+
+ORDER MANAGEMENT:
+- Create catering orders with customer details
+- Order states: pending → confirmed → preparing → ready → delivered → cancelled
+- Priority levels: low, medium, high
+- Order tracking and search functionality
+- Customer information management
+
+BILL GENERATION & WHATSAPP INTEGRATION:
+- Automatic professional bill generation
+- One-click WhatsApp bill sending
+- Separate WhatsApp server for bill delivery
+- Manual and automatic bill sending options
+- Bill tracking and delivery confirmation
+
+PRODUCT MANAGEMENT:
+- Product catalog with categories and deals
+- Barcode support and scanning
+- Inventory integration
+- Stock level tracking
+- Product search and filtering
+
+CUSTOMER MANAGEMENT:
+- Customer profiles and contact information
+- WhatsApp integration for communication
+- Order history tracking
+- Customer preferences and notes
+
+DASHBOARD & ANALYTICS:
+- Real-time business statistics
+- Revenue tracking and reports
+- Order analytics and trends
+- Performance metrics
+
+MOBILE POS SYSTEM:
+- React Native mobile app
+- Product catalog and cart management
+- Barcode scanning
+- Payment processing
+- Receipt generation
+- Real-time inventory checking
+
+TECHNOLOGY STACK:
+=================
+Frontend: React.js, TypeScript, Tailwind CSS, Vite
+Backend: Node.js, Express.js, MongoDB, Mongoose
+WhatsApp: WhatsApp Web.js, Puppeteer
+Mobile: React Native, TypeScript
+Storage: Cloudinary for images
+
+KEY WORKFLOW:
+=============
+1. Create order with customer details
+2. Track order through different states
+3. Generate professional bill when ready
+4. Send bill automatically via WhatsApp
+5. Track delivery and completion
+
+This system provides complete catering business management with seamless WhatsApp integration for customer communication and bill delivery.

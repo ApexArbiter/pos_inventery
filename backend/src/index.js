@@ -708,6 +708,697 @@ app.get('/api/inventory/history/:productId', async (req, res) => {
   }
 });
 
+// ==================== DASHBOARD APIs ====================
+console.log('🔧 Registering dashboard APIs...');
+
+// Test route
+app.get('/api/test-admin', (req, res) => {
+  console.log('🧪 Test admin route called!');
+  res.json({ success: true, message: 'Test admin route working!' });
+});
+
+console.log('✅ Test route registered');
+
+// Admin Dashboard Statistics
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    console.log('📊 Fetching admin stats...');
+    console.log('🔍 Admin stats route called!');
+    
+    // Get counts from database
+    const [
+      totalProducts,
+      totalCustomers,
+      totalTransactions,
+      totalRevenue,
+      lowStockItems,
+      outOfStockItems,
+      totalUsers,
+      totalCategories
+    ] = await Promise.all([
+      Product.countDocuments(),
+      Customer.countDocuments(),
+      Transaction.countDocuments(),
+      Transaction.aggregate([
+        { $group: { _id: null, total: { $sum: '$finalAmount' } } }
+      ]),
+      Inventory.countDocuments({ 
+        $expr: { 
+          $and: [
+            { $gt: ['$currentStock', 0] },
+            { $lte: ['$currentStock', '$reorderPoint'] }
+          ]
+        }
+      }),
+      Inventory.countDocuments({ currentStock: 0 }),
+      User.countDocuments(),
+      Category.countDocuments()
+    ]);
+
+    const revenue = totalRevenue[0]?.total || 0;
+    
+    // Calculate today's stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const todayTransactions = await Transaction.countDocuments({
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
+    const todayRevenue = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: today, $lt: tomorrow }
+        }
+      },
+      {
+        $group: { _id: null, total: { $sum: '$finalAmount' } }
+      }
+    ]);
+
+    const todayRevenueAmount = todayRevenue[0]?.total || 0;
+
+    // Calculate average order value
+    const avgOrderValue = totalTransactions > 0 ? revenue / totalTransactions : 0;
+
+    const stats = {
+      totalRevenue: revenue,
+      totalTransactions,
+      totalOrders: totalTransactions,
+      totalCustomers,
+      totalProducts,
+      totalUsers,
+      totalCategories,
+      lowStockItems,
+      outOfStockItems,
+      todayRevenue: todayRevenueAmount,
+      todayOrders: todayTransactions,
+      averageOrderValue: avgOrderValue,
+      growthRate: 12.5, // Mock growth rate
+      conversionRate: 3.2 // Mock conversion rate
+    };
+
+    console.log('✅ Admin stats fetched successfully');
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('❌ Error fetching admin stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch admin stats' });
+  }
+});
+
+// Sales Analytics
+app.get('/api/admin/analytics/sales', async (req, res) => {
+  try {
+    console.log('📈 Fetching sales analytics...');
+    
+    const { period = '7d' } = req.query;
+    let startDate = new Date();
+    
+    switch (period) {
+      case '1d':
+        startDate.setDate(startDate.getDate() - 1);
+        break;
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(startDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(startDate.getDate() - 7);
+    }
+
+    // Get sales data by day
+    const salesData = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          totalSales: { $sum: '$finalAmount' },
+          totalOrders: { $sum: 1 },
+          averageOrderValue: { $avg: '$finalAmount' }
+        }
+      },
+      {
+        $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 }
+      }
+    ]);
+
+    // Get top selling products
+    const topProducts = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productName',
+          totalSold: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.sellingPrice'] } }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Get sales by payment method
+    const salesByPayment = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$paymentMethod',
+          totalSales: { $sum: '$finalAmount' },
+          totalOrders: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const analytics = {
+      salesData,
+      topProducts,
+      salesByPayment,
+      period,
+      totalSales: salesData.reduce((sum, day) => sum + day.totalSales, 0),
+      totalOrders: salesData.reduce((sum, day) => sum + day.totalOrders, 0)
+    };
+
+    console.log('✅ Sales analytics fetched successfully');
+    res.json({ success: true, data: analytics });
+  } catch (error) {
+    console.error('❌ Error fetching sales analytics:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch sales analytics' });
+  }
+});
+
+// Orders Analytics
+app.get('/api/admin/analytics/orders', async (req, res) => {
+  try {
+    console.log('📦 Fetching orders analytics...');
+    
+    const { period = '7d' } = req.query;
+    let startDate = new Date();
+    
+    switch (period) {
+      case '1d':
+        startDate.setDate(startDate.getDate() - 1);
+        break;
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(startDate.getDate() - 90);
+        break;
+      default:
+        startDate.setDate(startDate.getDate() - 7);
+    }
+
+    // Get orders by status
+    const ordersByStatus = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$paymentStatus',
+          count: { $sum: 1 },
+          totalValue: { $sum: '$finalAmount' }
+        }
+      }
+    ]);
+
+    // Get orders by hour
+    const ordersByHour = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: { $hour: '$createdAt' },
+          count: { $sum: 1 },
+          totalValue: { $sum: '$finalAmount' }
+        }
+      },
+      { $sort: { '_id': 1 } }
+    ]);
+
+    // Get average order value over time
+    const avgOrderValue = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          avgValue: { $avg: '$finalAmount' },
+          totalOrders: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    const analytics = {
+      ordersByStatus,
+      ordersByHour,
+      avgOrderValue,
+      period,
+      totalOrders: ordersByStatus.reduce((sum, status) => sum + status.count, 0)
+    };
+
+    console.log('✅ Orders analytics fetched successfully');
+    res.json({ success: true, data: analytics });
+  } catch (error) {
+    console.error('❌ Error fetching orders analytics:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch orders analytics' });
+  }
+});
+
+// Products Analytics
+app.get('/api/admin/analytics/products', async (req, res) => {
+  try {
+    console.log('📦 Fetching products analytics...');
+    
+    // Get product performance
+    const productPerformance = await Transaction.aggregate([
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productName',
+          totalSold: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: { $multiply: ['$items.quantity', '$items.sellingPrice'] } },
+          avgPrice: { $avg: '$items.sellingPrice' }
+        }
+      },
+      { $sort: { totalSold: -1 } },
+      { $limit: 20 }
+    ]);
+
+    // Get products by category
+    const productsByCategory = await Product.aggregate([
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'categoryInfo'
+        }
+      },
+      {
+        $unwind: { path: '$categoryInfo', preserveNullAndEmptyArrays: true }
+      },
+      {
+        $project: {
+          categoryName: '$categoryInfo.name',
+          count: 1
+        }
+      }
+    ]);
+
+    // Get low stock products
+    const lowStockProducts = await Inventory.aggregate([
+      {
+        $match: {
+          $expr: {
+            $and: [
+              { $gt: ['$currentStock', 0] },
+              { $lte: ['$currentStock', '$reorderPoint'] }
+            ]
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $project: {
+          productName: '$product.productName',
+          currentStock: 1,
+          reorderPoint: 1,
+          status: 'low_stock'
+        }
+      }
+    ]);
+
+    // Get out of stock products
+    const outOfStockProducts = await Inventory.aggregate([
+      {
+        $match: { currentStock: 0 }
+      },
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $project: {
+          productName: '$product.productName',
+          currentStock: 1,
+          status: 'out_of_stock'
+        }
+      }
+    ]);
+
+    const analytics = {
+      productPerformance,
+      productsByCategory,
+      lowStockProducts,
+      outOfStockProducts,
+      totalProducts: await Product.countDocuments(),
+      totalCategories: await Category.countDocuments()
+    };
+
+    console.log('✅ Products analytics fetched successfully');
+    res.json({ success: true, data: analytics });
+  } catch (error) {
+    console.error('❌ Error fetching products analytics:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch products analytics' });
+  }
+});
+
+// Customers Analytics
+app.get('/api/admin/analytics/customers', async (req, res) => {
+  try {
+    console.log('👥 Fetching customers analytics...');
+    
+    // Get customer acquisition over time
+    const customerAcquisition = await Customer.aggregate([
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' },
+            day: { $dayOfMonth: '$createdAt' }
+          },
+          newCustomers: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    ]);
+
+    // Get top customers by spending
+    const topCustomers = await Transaction.aggregate([
+      {
+        $group: {
+          _id: '$customer',
+          totalSpent: { $sum: '$finalAmount' },
+          totalOrders: { $sum: 1 },
+          avgOrderValue: { $avg: '$finalAmount' }
+        }
+      },
+      { $sort: { totalSpent: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: 'customers',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'customerInfo'
+        }
+      },
+      { $unwind: { path: '$customerInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          customerName: '$customerInfo.name',
+          totalSpent: 1,
+          totalOrders: 1,
+          avgOrderValue: 1
+        }
+      }
+    ]);
+
+    // Get customer segments
+    const customerSegments = await Transaction.aggregate([
+      {
+        $group: {
+          _id: '$customer',
+          totalSpent: { $sum: '$finalAmount' },
+          totalOrders: { $sum: 1 }
+        }
+      },
+      {
+        $bucket: {
+          groupBy: '$totalSpent',
+          boundaries: [0, 1000, 5000, 10000, Infinity],
+          default: 'Other',
+          output: {
+            count: { $sum: 1 },
+            avgSpent: { $avg: '$totalSpent' },
+            avgOrders: { $avg: '$totalOrders' }
+          }
+        }
+      }
+    ]);
+
+    const analytics = {
+      customerAcquisition,
+      topCustomers,
+      customerSegments,
+      totalCustomers: await Customer.countDocuments(),
+      newCustomersToday: await Customer.countDocuments({
+        createdAt: {
+          $gte: new Date(new Date().setHours(0, 0, 0, 0))
+        }
+      })
+    };
+
+    console.log('✅ Customers analytics fetched successfully');
+    res.json({ success: true, data: analytics });
+  } catch (error) {
+    console.error('❌ Error fetching customers analytics:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch customers analytics' });
+  }
+});
+
+// Recent Activity
+app.get('/api/admin/activity/recent', async (req, res) => {
+  try {
+    console.log('📋 Fetching recent activity...');
+    
+    const { limit = 20 } = req.query;
+    
+    // Get recent transactions
+    const recentTransactions = await Transaction.find()
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .select('billNumber finalAmount paymentStatus createdAt customer')
+      .lean();
+
+    // Get recent product additions
+    const recentProducts = await Product.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('productName createdAt createdBy')
+      .lean();
+
+    // Get recent customer registrations
+    const recentCustomers = await Customer.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('name email createdAt')
+      .lean();
+
+    // Format activities
+    const activities = [
+      ...recentTransactions.map(tx => ({
+        type: 'transaction',
+        title: `New transaction #${tx.billNumber}`,
+        description: `Rs.${tx.finalAmount} - ${tx.paymentStatus}`,
+        timestamp: tx.createdAt,
+        icon: 'receipt'
+      })),
+      ...recentProducts.map(product => ({
+        type: 'product',
+        title: 'New product added',
+        description: product.productName,
+        timestamp: product.createdAt,
+        icon: 'package'
+      })),
+      ...recentCustomers.map(customer => ({
+        type: 'customer',
+        title: 'New customer registered',
+        description: customer.name,
+        timestamp: customer.createdAt,
+        icon: 'user'
+      }))
+    ];
+
+    // Sort by timestamp
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    console.log('✅ Recent activity fetched successfully');
+    res.json({ success: true, data: activities.slice(0, parseInt(limit)) });
+  } catch (error) {
+    console.error('❌ Error fetching recent activity:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch recent activity' });
+  }
+});
+
+// System Alerts
+app.get('/api/admin/alerts', async (req, res) => {
+  try {
+    console.log('🚨 Fetching system alerts...');
+    
+    const alerts = [];
+
+    // Check for low stock items
+    const lowStockCount = await Inventory.countDocuments({
+      $expr: {
+        $and: [
+          { $gt: ['$currentStock', 0] },
+          { $lte: ['$currentStock', '$reorderPoint'] }
+        ]
+      }
+    });
+
+    if (lowStockCount > 0) {
+      alerts.push({
+        type: 'warning',
+        title: 'Low Stock Alert',
+        message: `${lowStockCount} products are running low on stock`,
+        severity: 'medium',
+        timestamp: new Date()
+      });
+    }
+
+    // Check for out of stock items
+    const outOfStockCount = await Inventory.countDocuments({ currentStock: 0 });
+    if (outOfStockCount > 0) {
+      alerts.push({
+        type: 'error',
+        title: 'Out of Stock Alert',
+        message: `${outOfStockCount} products are out of stock`,
+        severity: 'high',
+        timestamp: new Date()
+      });
+    }
+
+    // Check for recent system errors (mock)
+    alerts.push({
+      type: 'info',
+      title: 'System Status',
+      message: 'All systems running normally',
+      severity: 'low',
+      timestamp: new Date()
+    });
+
+    console.log('✅ System alerts fetched successfully');
+    res.json({ success: true, data: alerts });
+  } catch (error) {
+    console.error('❌ Error fetching system alerts:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch system alerts' });
+  }
+});
+
+// Performance Metrics
+app.get('/api/admin/performance', async (req, res) => {
+  try {
+    console.log('⚡ Fetching performance metrics...');
+    
+    const { period = '7d' } = req.query;
+    let startDate = new Date();
+    
+    switch (period) {
+      case '1d':
+        startDate.setDate(startDate.getDate() - 1);
+        break;
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      default:
+        startDate.setDate(startDate.getDate() - 7);
+    }
+
+    // Get performance metrics
+    const totalTransactions = await Transaction.countDocuments({
+      createdAt: { $gte: startDate }
+    });
+
+    const totalRevenue = await Transaction.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$finalAmount' }
+        }
+      }
+    ]);
+
+    const avgOrderValue = totalTransactions > 0 ? (totalRevenue[0]?.total || 0) / totalTransactions : 0;
+
+    // Mock performance data
+    const performance = {
+      responseTime: Math.random() * 100 + 50, // Mock response time in ms
+      uptime: 99.9, // Mock uptime percentage
+      totalRequests: totalTransactions * 3, // Mock request count
+      errorRate: 0.1, // Mock error rate
+      avgOrderValue,
+      totalRevenue: totalRevenue[0]?.total || 0,
+      totalTransactions,
+      period
+    };
+
+    console.log('✅ Performance metrics fetched successfully');
+    res.json({ success: true, data: performance });
+  } catch (error) {
+    console.error('❌ Error fetching performance metrics:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch performance metrics' });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -717,7 +1408,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler - must be last
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -726,7 +1417,7 @@ app.use((req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Starting SuperMarket POS API Server`);
   console.log(`📍 Environment: ${NODE_ENV}`);
   console.log(`🌐 Port: ${PORT}`);
@@ -734,6 +1425,7 @@ app.listen(PORT, () => {
   console.log(`🌐 API: http://localhost:${PORT}/api/test`);
   console.log(`🔐 Login: http://localhost:${PORT}/api/auth/login`);
   console.log(`❤️ Health: http://localhost:${PORT}/health`);
+  console.log(`🌐 Network API: http://192.168.18.50:${PORT}/api/test`);
   console.log(`🚀 SuperMarket POS API Server is ready!`);
 });
 
