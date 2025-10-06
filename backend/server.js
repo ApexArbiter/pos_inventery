@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import fs from 'fs';
 
 // Load environment variables
 dotenv.config();
@@ -591,7 +592,6 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
     console.log('Cloudinary upload successful:', result.secure_url);
     
     // Clean up local file
-    const fs = await import('fs');
     try {
       fs.unlinkSync(req.file.path);
       console.log('Local file cleaned up');

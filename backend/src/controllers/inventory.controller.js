@@ -124,7 +124,7 @@ export const adjustInventory = async (req, res) => {
     
     if (!inventory) {
       // Get product details first
-      const Product = (await import('../models/product.model.js')).default;
+      // Product is already imported at the top
       const product = await Product.findById(productId);
       
       if (!product) {
@@ -156,7 +156,7 @@ export const adjustInventory = async (req, res) => {
     } else {
       // Fix existing inventory record if it's missing required fields
       if (!inventory.storeId || !inventory.productDetails) {
-        const Product = (await import('../models/product.model.js')).default;
+        // Product is already imported at the top
         const product = await Product.findById(productId);
         
         if (product) {
