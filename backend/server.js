@@ -7,6 +7,12 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import multer from "multer";
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -32,10 +38,17 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Created uploads directory');
+}
+
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/");
+    cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + "-" + file.originalname);
@@ -61,30 +74,52 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
-// CORS configuration
+// PRODUCTION-READY CORS configuration
 const allowedOrigins = [
+  // Development origins
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:5174",
   "http://127.0.0.1:3000",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
+  
+  // Tauri desktop app
+  "tauri://localhost",
   "http://tauri.localhost",
+  "https://tauri.localhost",
+  
+  // Capacitor/Ionic mobile apps
+  "capacitor://localhost",
+  "ionic://localhost",
   "http://localhost",
-  "http://tauri.localhost",
+  
+  // Add your production domain if you have one
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
+      // Allow requests with no origin (mobile apps, Tauri, curl, Postman)
+      if (!origin) {
+        console.log('✅ CORS: Allowing request with no origin (likely mobile/desktop app)');
+        return callback(null, true);
+      }
 
-      if (allowedOrigins.indexOf(origin) !== -1) {
+      // Check if origin is allowed
+      if (allowedOrigins.some(allowed => origin.startsWith(allowed))) {
+        console.log('✅ CORS: Allowed origin:', origin);
         callback(null, true);
       } else {
-        console.log("CORS blocked origin:", origin);
-        callback(new Error("Not allowed by CORS"));
+        console.log('⚠️ CORS: Blocked origin:', origin);
+        // In production, you might want to allow it anyway for mobile/desktop apps
+        if (NODE_ENV === 'production') {
+          console.log('🔓 Production mode: Allowing origin anyway');
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
       }
     },
     credentials: true,
@@ -110,6 +145,7 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     environment: NODE_ENV,
     port: PORT,
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
   });
 });
 
@@ -143,11 +179,26 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
-    // Check password (simple string comparison for now)
-    const isMatch = password === user.password;
-    console.log(
-      `🔍 Password check for ${email}: ${isMatch ? "SUCCESS" : "FAILED"}`
-    );
+    // Check password - FIXED: Support both hashed and plain text for migration
+    let isMatch = false;
+    
+    // If password starts with $2a$ or $2b$, it's bcrypt hashed
+    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+      isMatch = await bcrypt.compare(password, user.password);
+      console.log(`🔍 Bcrypt password check: ${isMatch ? "SUCCESS" : "FAILED"}`);
+    } else {
+      // Plain text comparison (for backward compatibility)
+      isMatch = password === user.password;
+      console.log(`🔍 Plain text password check: ${isMatch ? "SUCCESS" : "FAILED"}`);
+      
+      // If login successful with plain text, hash it for next time
+      if (isMatch) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        user.password = hashedPassword;
+        await user.save();
+        console.log('🔒 Password hashed and updated');
+      }
+    }
 
     if (!isMatch) {
       console.log(`❌ Password mismatch for ${email}`);
@@ -169,6 +220,15 @@ app.post("/api/auth/login", async (req, res) => {
       });
     }
 
+    // Validate JWT_SECRET exists
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET not found in environment variables!');
+      return res.status(500).json({
+        success: false,
+        message: "Server configuration error",
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -178,7 +238,7 @@ app.post("/api/auth/login", async (req, res) => {
         storeId: user.storeId,
         permissions: user.permissions || [],
       },
-      process.env.JWT_SECRET || "your-secret-key",
+      process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
@@ -243,10 +303,13 @@ app.post("/api/auth/signup", async (req, res) => {
       });
     }
 
+    // Hash password - FIXED: Always hash passwords
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Create new user
     const newUser = new User({
       email: email.toLowerCase(),
-      password: password, // Store as plain text for now
+      password: hashedPassword,
       name,
       role,
       storeId: store._id,
@@ -267,6 +330,15 @@ app.post("/api/auth/signup", async (req, res) => {
 
     await newUser.save();
 
+    // Validate JWT_SECRET exists
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET not found in environment variables!');
+      return res.status(500).json({
+        success: false,
+        message: "Server configuration error",
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -276,7 +348,7 @@ app.post("/api/auth/signup", async (req, res) => {
         storeId: newUser.storeId,
         permissions: newUser.permissions,
       },
-      process.env.JWT_SECRET || "your-secret-key",
+      process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
@@ -321,10 +393,16 @@ app.get("/api/auth/me", async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "your-secret-key"
-    );
+    // Validate JWT_SECRET exists
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET not found in environment variables!');
+      return res.status(500).json({
+        success: false,
+        message: "Server configuration error",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.userId);
     const store = await Store.findById(decoded.storeId);
 
@@ -774,7 +852,7 @@ app.use((err, req, res, next) => {
   console.error("Error:", err);
   res.status(500).json({
     success: false,
-    message: "Internal server error",
+    message: err.message || "Internal server error",
   });
 });
 
@@ -786,8 +864,15 @@ app.use((req, res) => {
   });
 });
 
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server gracefully...');
+  mongoose.connection.close();
+  process.exit(0);
+});
+
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Starting SuperMarket POS API Server`);
   console.log(`📍 Environment: ${NODE_ENV}`);
   console.log(`🌐 Port: ${PORT}`);
@@ -796,6 +881,12 @@ app.listen(PORT, () => {
   console.log(`🔐 Login: http://localhost:${PORT}/api/auth/login`);
   console.log(`❤️ Health: http://localhost:${PORT}/health`);
   console.log(`🚀 SuperMarket POS API Server is ready!`);
+  
+  // Log environment variable status
+  console.log('\n🔧 Environment Check:');
+  console.log(`   MongoDB: ${process.env.MONGODB_URI ? '✅' : '❌'}`);
+  console.log(`   JWT_SECRET: ${process.env.JWT_SECRET ? '✅' : '❌'}`);
+  console.log(`   Cloudinary: ${process.env.CLOUDINARY_CLOUD_NAME ? '✅' : '❌'}`);
 });
 
 export default app;
