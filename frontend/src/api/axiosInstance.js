@@ -2,7 +2,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 
 // Base URL configuration
-const BASE_URL =  'http://localhost:5001/api';
+const BASE_URL =  'https://pos-inventery.onrender.com/api';
 // const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 // Create axios instance
