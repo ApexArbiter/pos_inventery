@@ -1,14 +1,13 @@
 // lib/billImageGenerator.js - Generate bill as image buffer
-import puppeteer from 'puppeteer';
+import puppeteer from "puppeteer";
 
 class BillImageService {
-  
   // Generate bill HTML content
   generateBillHTML(order) {
     const formatDate = (dateString) => {
       return new Date(dateString).toLocaleDateString("en-US", {
         year: "numeric",
-        month: "long", 
+        month: "long",
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
@@ -24,18 +23,24 @@ class BillImageService {
 
     const renderDealItems = (item) => {
       const dealItems = item.productId?.items || item.items;
-      
+
       if (item.category === "Deals" && dealItems && dealItems.length > 0) {
         return `
           <div style="font-size: 11px; color: #666; margin-top: 4px; padding: 5px; background-color: #f9f9f9; border-radius: 4px; border-left: 3px solid #007bff;">
             <div style="font-weight: bold; margin-bottom: 4px; color: #007bff; font-size: 11px;">Deal Includes:</div>
-            ${dealItems.map((dealItem, index) => `
-              <div style="margin-bottom: 2px; padding-left: 8px;">${index + 1}. ${dealItem}</div>
-            `).join('')}
+            ${dealItems
+              .map(
+                (dealItem, index) => `
+              <div style="margin-bottom: 2px; padding-left: 8px;">${
+                index + 1
+              }. ${dealItem}</div>
+            `
+              )
+              .join("")}
           </div>
         `;
       }
-      return '';
+      return "";
     };
 
     return `
@@ -139,7 +144,7 @@ class BillImageService {
           <div class="bill-container">
             <!-- Header -->
             <div class="header">
-              <div class="company-name">Raza Catering</div>
+              <div class="company-name">POS</div>
               <div style="font-size: 14px; color: #666;">
                 Address: Your Restaurant Address
               </div>
@@ -155,19 +160,28 @@ class BillImageService {
               <div>
                 <strong>Status:</strong> 
                 <span style="text-transform: uppercase; font-weight: bold; color: ${
-                  order.status === "confirmed" ? "green" : 
-                  order.status === "cancelled" ? "red" : "orange"
+                  order.status === "confirmed"
+                    ? "green"
+                    : order.status === "cancelled"
+                    ? "red"
+                    : "orange"
                 };">
                   ${order.status}
                 </span>
               </div>
             </div>
 
-            ${order.deliveryDate ? `
+            ${
+              order.deliveryDate
+                ? `
               <div style="margin-bottom: 12px; font-weight: bold;">
-                <strong>Delivery Date:</strong> ${formatDate(order.deliveryDate)}
+                <strong>Delivery Date:</strong> ${formatDate(
+                  order.deliveryDate
+                )}
               </div>
-            ` : ''}
+            `
+                : ""
+            }
 
             <!-- Customer Info -->
             <div class="customer-info">
@@ -179,9 +193,13 @@ class BillImageService {
                   <strong>Address:</strong> ${order.customer.address}
                 </div>
               </div>
-              ${order.notes ? `
+              ${
+                order.notes
+                  ? `
                 <div><strong>Special Notes:</strong> ${order.notes}</div>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
 
             <!-- Items Table -->
@@ -196,17 +214,23 @@ class BillImageService {
                 </tr>
               </thead>
               <tbody>
-                ${order.items.map((item, index) => `
+                ${order.items
+                  .map(
+                    (item, index) => `
                   <tr>
                     <td class="sr-number">${index + 1}</td>
                     <td>
                       <div>
                         <div style="font-weight: bold;">${item.name}</div>
-                        ${item.category === "Deals" ? `
+                        ${
+                          item.category === "Deals"
+                            ? `
                           <div style="font-size: 11px; color: #888; font-style: italic; margin-top: 2px;">
                             Deal Package
                           </div>
-                        ` : ''}
+                        `
+                            : ""
+                        }
                         ${renderDealItems(item)}
                       </div>
                     </td>
@@ -214,7 +238,9 @@ class BillImageService {
                     <td style="text-align: center;">${item.quantity}</td>
                     <td>£${item.subtotal.toFixed(2)}</td>
                   </tr>
-                `).join('')}
+                `
+                  )
+                  .join("")}
               </tbody>
             </table>
 
@@ -225,12 +251,20 @@ class BillImageService {
                 <span>£${order.totalAmount.toFixed(2)}</span>
               </div>
 
-              ${order.discount > 0 ? `
+              ${
+                order.discount > 0
+                  ? `
                 <div class="total-row">
-                  <span>Discount (${order.discountType === "percentage" ? `${order.discount}%` : `£${order.discount}`}):</span>
+                  <span>Discount (${
+                    order.discountType === "percentage"
+                      ? `${order.discount}%`
+                      : `£${order.discount}`
+                  }):</span>
                   <span>-£${calculateDiscountAmount().toFixed(2)}</span>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
 
               <div class="total-row final-total">
                 <span>Total Amount:</span>
@@ -246,11 +280,15 @@ class BillImageService {
               <p style="margin: 0; font-size: 12px; color: #666;">
                 For any queries, please contact us at the above number.
               </p>
-              ${order.priority === "high" ? `
+              ${
+                order.priority === "high"
+                  ? `
                 <p style="margin: 10px 0 0 0; font-size: 12px; color: #dc3545; font-weight: bold;">
                   ⚠️ HIGH PRIORITY ORDER
                 </p>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
           </div>
         </body>
@@ -263,33 +301,32 @@ class BillImageService {
     let browser;
     try {
       console.log(`🖼️ Generating bill image for order: ${order.orderNumber}`);
-      
+
       browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
       });
-      
+
       const page = await browser.newPage();
-      
+
       // Set viewport for consistent image size
       await page.setViewport({ width: 800, height: 1200 });
-      
+
       // Generate and set HTML content
       const htmlContent = this.generateBillHTML(order);
-      await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-      
+      await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+
       // Take screenshot of the bill
       const imageBuffer = await page.screenshot({
-        type: 'png',
+        type: "png",
         fullPage: true,
         omitBackground: false,
       });
-      
+
       console.log(`✅ Bill image generated: ${imageBuffer.length} bytes`);
       return imageBuffer;
-      
     } catch (error) {
-      console.error('❌ Error generating bill image:', error);
+      console.error("❌ Error generating bill image:", error);
       throw new Error(`Failed to generate bill image: ${error.message}`);
     } finally {
       if (browser) {

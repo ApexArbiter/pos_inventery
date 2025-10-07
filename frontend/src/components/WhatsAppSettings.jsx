@@ -26,7 +26,7 @@ const WhatsAppSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [testMessage, setTestMessage] = useState({
     phoneNumber: "",
-    message: "Hello! This is a test message from Raza Catering.",
+    message: "Hello! This is a test message from POS.",
   });
   const [pairingCode, setPairingCode] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -383,26 +383,29 @@ const WhatsAppSettings = () => {
               Manage your WhatsApp Web connection for order notifications
             </p>
           </div>
-         <div className="flex items-center space-x-4">
-  <div className="flex items-center space-x-2">
-    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-      Auto Refresh
-    </label>
-    <button
-      onClick={() => setAutoRefresh(!autoRefresh)}
-      className={`relative inline-flex items-center h-7 w-14 rounded-full transition-colors duration-300 ease-in-out focus:outline-none 
-        ${autoRefresh ? "bg-green-500 shadow-md shadow-green-400/50" : "bg-gray-300 dark:bg-gray-600"}
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Auto Refresh
+              </label>
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`relative inline-flex items-center h-7 w-14 rounded-full transition-colors duration-300 ease-in-out focus:outline-none 
+        ${
+          autoRefresh
+            ? "bg-green-500 shadow-md shadow-green-400/50"
+            : "bg-gray-300 dark:bg-gray-600"
+        }
       `}
-    >
-      <span
-        className={`inline-block w-6 h-6 transform bg-white rounded-full shadow-md transition-transform duration-300 ease-in-out
+              >
+                <span
+                  className={`inline-block w-6 h-6 transform bg-white rounded-full shadow-md transition-transform duration-300 ease-in-out
           ${autoRefresh ? "translate-x-7" : "translate-x-0"}
         `}
-      />
-    </button>
-  </div>
-</div>
- 
+                />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Notifications */}
@@ -724,11 +727,6 @@ const WhatsAppSettings = () => {
             </div>
           </div>
         </div>
-
-        
-      
-
-     
       </div>
     </div>
   );

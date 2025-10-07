@@ -3,12 +3,12 @@ import { X, Printer, Download, MessageCircle } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-const BillGenerator = ({ 
-  isOpen, 
-  onClose, 
-  order, 
-  onImageGenerated, 
-  isGeneratingForWhatsApp = false 
+const BillGenerator = ({
+  isOpen,
+  onClose,
+  order,
+  onImageGenerated,
+  isGeneratingForWhatsApp = false,
 }) => {
   const billRef = React.useRef();
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
@@ -410,7 +410,7 @@ const BillGenerator = ({
                 )}
               </button>
             )}
-            
+
             <button
               onClick={handleDownloadPDF}
               className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center"
@@ -446,7 +446,7 @@ const BillGenerator = ({
           <div ref={billRef} style={billStyles.container}>
             {/* Header */}
             <div style={billStyles.header}>
-              <div style={billStyles.companyName}>Raza Catering</div>
+              <div style={billStyles.companyName}>POS</div>
               <div style={{ fontSize: "14px", color: "#666" }}>
                 Address: Your Restaurant Address
               </div>
@@ -496,12 +496,14 @@ const BillGenerator = ({
               </h3>
 
               {/* Grid Container for 2 Columns */}
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px",
-                marginBottom: "8px"
-              }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "8px",
+                  marginBottom: "8px",
+                }}
+              >
                 <div>
                   <strong>Name:</strong> {order.customer.name}
                 </div>
@@ -633,7 +635,8 @@ const BillGenerator = ({
           <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
             <div className="text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                Click "Send via WhatsApp" to generate and send this bill to the customer
+                Click "Send via WhatsApp" to generate and send this bill to the
+                customer
               </p>
               <div className="flex justify-center space-x-3">
                 <button

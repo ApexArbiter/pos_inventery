@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Eye, 
-  Printer, 
+import React, { useState, useEffect } from "react";
+import {
+  Plus,
+  Search,
+  Filter,
+  Eye,
+  Printer,
   MessageSquare,
   MoreVertical,
   Calendar,
@@ -12,9 +12,9 @@ import {
   Users,
   Package,
   TrendingUp,
-  X
-} from 'lucide-react';
-import axiosInstance from '../api/axiosInstance';
+  X,
+} from "lucide-react";
+import axiosInstance from "../api/axiosInstance";
 
 // Bill Generator Modal Component
 const BillGenerator = ({ isOpen, onClose, order }) => {
@@ -250,7 +250,7 @@ const BillGenerator = ({ isOpen, onClose, order }) => {
           <div ref={billRef} style={billStyles.container}>
             {/* Header */}
             <div style={billStyles.header}>
-              <div style={billStyles.companyName}>Raza Catering</div>
+              <div style={billStyles.companyName}>POS</div>
               <div style={{ fontSize: "14px", color: "#666" }}>
                 Address: Your Restaurant Address
               </div>
@@ -401,14 +401,14 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'low':
-        return 'bg-green-100 text-green-800';
+      case "high":
+        return "bg-red-100 text-red-800";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800";
+      case "low":
+        return "bg-green-100 text-green-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -452,8 +452,12 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
                   <Package className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Order Number</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">{order.orderNumber}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Order Number
+                  </p>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    {order.orderNumber}
+                  </p>
                 </div>
               </div>
             </div>
@@ -464,8 +468,12 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
                   <DollarSign className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Amount</p>
-                  <p className="font-semibold text-gray-900 dark:text-white">£{order.finalAmount.toFixed(2)}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Total Amount
+                  </p>
+                  <p className="font-semibold text-gray-900 dark:text-white">
+                    £{order.finalAmount.toFixed(2)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -476,7 +484,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
                   <Calendar className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Order Date</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Order Date
+                  </p>
                   <p className="font-semibold text-gray-900 dark:text-white">
                     {/* {formatDate(order.createdAt)} */}
                     {new Date(order.createdAt).toLocaleDateString()}
@@ -491,8 +501,14 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Priority</p>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(order.priority)}`}>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Priority
+                  </p>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                      order.priority
+                    )}`}
+                  >
                     {order.priority}
                   </span>
                 </div>
@@ -509,34 +525,54 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Name</p>
-                <p className="font-medium text-gray-900 dark:text-white">{order.customer.name}</p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {order.customer.name}
+                </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">WhatsApp</p>
-                <p className="font-medium text-gray-900 dark:text-white">{order.customer.whatsapp}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  WhatsApp
+                </p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {order.customer.whatsapp}
+                </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Address</p>
-                <p className="font-medium text-gray-900 dark:text-white">{order.customer.address}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Address
+                </p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {order.customer.address}
+                </p>
               </div>
             </div>
             {order.deliveryDate && (
               <div className="mt-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Delivery Date</p>
-                <p className="font-medium text-gray-900 dark:text-white">{formatDate(order.deliveryDate)}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Delivery Date
+                </p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {formatDate(order.deliveryDate)}
+                </p>
               </div>
             )}
             {order.notes && (
               <div className="mt-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Notes</p>
-                <p className="font-medium text-gray-900 dark:text-white">{order.notes}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Notes
+                </p>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {order.notes}
+                </p>
               </div>
             )}
           </div>
 
           {/* Order Items */}
           <div className="bg-white dark:bg-gray-700 p-6 rounded-xl border border-gray-200 dark:border-gray-600">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order Items</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Order Items
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-800">
@@ -559,7 +595,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
                   {order.items.map((item, index) => (
                     <tr key={index}>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {item.name}
+                        </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-gray-900 dark:text-white">
                         £{item.price.toFixed(2)}
@@ -579,23 +617,39 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
 
           {/* Order Summary */}
           <div className="bg-white dark:bg-gray-700 p-6 rounded-xl border border-gray-200 dark:border-gray-600">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Order Summary</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Order Summary
+            </h3>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Subtotal:</span>
-                <span className="font-medium text-gray-900 dark:text-white">£{order.totalAmount.toFixed(2)}</span>
+                <span className="text-gray-600 dark:text-gray-400">
+                  Subtotal:
+                </span>
+                <span className="font-medium text-gray-900 dark:text-white">
+                  £{order.totalAmount.toFixed(2)}
+                </span>
               </div>
               {order.discount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">
-                    Discount ({order.discountType === "percentage" ? `${order.discount}%` : `£${order.discount}`}):
+                    Discount (
+                    {order.discountType === "percentage"
+                      ? `${order.discount}%`
+                      : `£${order.discount}`}
+                    ):
                   </span>
-                  <span className="font-medium text-red-600">-£{calculateDiscountAmount().toFixed(2)}</span>
+                  <span className="font-medium text-red-600">
+                    -£{calculateDiscountAmount().toFixed(2)}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-600">
-                <span className="text-lg font-semibold text-gray-900 dark:text-white">Total:</span>
-                <span className="text-lg font-bold text-green-600">£{order.finalAmount.toFixed(2)}</span>
+                <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Total:
+                </span>
+                <span className="text-lg font-bold text-green-600">
+                  £{order.finalAmount.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
@@ -607,7 +661,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order, onPrint }) => {
 
 // Main Confirmed Orders Component
 const ConfirmedOrders = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [showBillGenerator, setShowBillGenerator] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -616,8 +670,8 @@ const ConfirmedOrders = () => {
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({});
   const [statusCounts, setStatusCounts] = useState({});
-  const [statusFilter, setStatusFilter] = useState('confirmed');
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState("confirmed");
+  const [priorityFilter, setPriorityFilter] = useState("all");
 
   const fetchOrders = async (page = 1, limit = 20) => {
     try {
@@ -652,12 +706,12 @@ const ConfirmedOrders = () => {
   }, [statusFilter, priorityFilter, searchTerm]);
 
   // Filter only confirmed orders
-  const confirmedOrders = orders.filter(order => 
-    order.status === 'confirmed'
+  const confirmedOrders = orders.filter(
+    (order) => order.status === "confirmed"
   );
 
-  const filteredOrders = confirmedOrders.filter(order => {
-    const matchesSearch = 
+  const filteredOrders = confirmedOrders.filter((order) => {
+    const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customer.whatsapp.includes(searchTerm);
@@ -666,10 +720,15 @@ const ConfirmedOrders = () => {
 
   // Calculate stats
   const totalOrders = confirmedOrders.length;
-  const totalRevenue = confirmedOrders.reduce((sum, order) => sum + order.finalAmount, 0);
+  const totalRevenue = confirmedOrders.reduce(
+    (sum, order) => sum + order.finalAmount,
+    0
+  );
   const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-  const totalItems = confirmedOrders.reduce((sum, order) => 
-    sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0
+  const totalItems = confirmedOrders.reduce(
+    (sum, order) =>
+      sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    0
   );
 
   const handleViewOrder = (order) => {
@@ -683,9 +742,16 @@ const ConfirmedOrders = () => {
   };
 
   const handleSendWhatsApp = (order) => {
-    const message = `Hi ${order.customer.name}! Your order ${order.orderNumber} has been confirmed. Total: £${order.finalAmount.toFixed(2)}. We'll notify you once it's ready for delivery.`;
-    const whatsappUrl = `https://wa.me/${order.customer.whatsapp.replace('+', '')}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    const message = `Hi ${order.customer.name}! Your order ${
+      order.orderNumber
+    } has been confirmed. Total: £${order.finalAmount.toFixed(
+      2
+    )}. We'll notify you once it's ready for delivery.`;
+    const whatsappUrl = `https://wa.me/${order.customer.whatsapp.replace(
+      "+",
+      ""
+    )}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   if (loading) {
@@ -698,16 +764,24 @@ const ConfirmedOrders = () => {
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+      <div
+        className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+        role="alert"
+      >
         <strong className="font-bold">Error!</strong>
         <span className="block sm:inline"> {error}</span>
-        <button 
-          onClick={() => fetchOrders()} 
+        <button
+          onClick={() => fetchOrders()}
           className="absolute top-0 bottom-0 right-0 px-4 py-3"
         >
-          <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <svg
+            className="fill-current h-6 w-6 text-red-500"
+            role="button"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+          >
             <title>Refresh</title>
-            <path d="M10 3v2a5 5 0 0 0-3.54 8.54l-1.41 1.41A7 7 0 0 1 10 3zm4.95 2.05A7 7 0 0 1 10 17v-2a5 5 0 0 0 3.54-8.54l1.41-1.41zM10 20l-4-4 4-4v8zm0-12V0l4 4-4 4z"/>
+            <path d="M10 3v2a5 5 0 0 0-3.54 8.54l-1.41 1.41A7 7 0 0 1 10 3zm4.95 2.05A7 7 0 0 1 10 17v-2a5 5 0 0 0 3.54-8.54l1.41-1.41zM10 20l-4-4 4-4v8zm0-12V0l4 4-4 4z" />
           </svg>
         </button>
       </div>
@@ -780,7 +854,6 @@ const ConfirmedOrders = () => {
         </div>
       </div>
 
-
       {/* Orders Table */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 hover:shadow-lg">
         <div className="overflow-x-auto">
@@ -815,39 +888,61 @@ const ConfirmedOrders = () => {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200">
+                <tr
+                  key={order.id}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900 dark:text-white">{order.orderNumber}</div>
+                    <div className="font-medium text-gray-900 dark:text-white">
+                      {order.orderNumber}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="font-medium text-gray-900 dark:text-white">{order.customer.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{order.customer.whatsapp}</div>
+                      <div className="font-medium text-gray-900 dark:text-white">
+                        {order.customer.name}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {order.customer.whatsapp}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900 dark:text-white">
-                      {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                      {order.items.length} item
+                      {order.items.length > 1 ? "s" : ""}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {order.items.slice(0, 2).map(item => item.name).join(', ')}
-                      {order.items.length > 2 && '...'}
+                      {order.items
+                        .slice(0, 2)
+                        .map((item) => item.name)
+                        .join(", ")}
+                      {order.items.length > 2 && "..."}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="font-medium text-gray-900 dark:text-white">£{order.finalAmount.toFixed(2)}</div>
+                    <div className="font-medium text-gray-900 dark:text-white">
+                      £{order.finalAmount.toFixed(2)}
+                    </div>
                     {order.discount > 0 && (
                       <div className="text-xs text-red-500">
-                        -{order.discountType === 'percentage' ? `${order.discount}%` : `${order.discount}`}
+                        -
+                        {order.discountType === "percentage"
+                          ? `${order.discount}%`
+                          : `${order.discount}`}
                       </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      order.priority === 'high' ? 'bg-red-100 text-red-800' :
-                      order.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        order.priority === "high"
+                          ? "bg-red-100 text-red-800"
+                          : order.priority === "medium"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-green-100 text-green-800"
+                      }`}
+                    >
                       {order.priority}
                     </span>
                   </td>
@@ -855,7 +950,9 @@ const ConfirmedOrders = () => {
                     {new Date(order.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'Not set'}
+                    {order.deliveryDate
+                      ? new Date(order.deliveryDate).toLocaleDateString()
+                      : "Not set"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center space-x-2">
@@ -873,7 +970,6 @@ const ConfirmedOrders = () => {
                       >
                         <Printer className="w-4 h-4" />
                       </button>
-                     
                     </div>
                   </td>
                 </tr>
@@ -890,7 +986,9 @@ const ConfirmedOrders = () => {
               No confirmed orders found
             </h3>
             <p className="text-gray-500 dark:text-gray-400">
-              {searchTerm ? 'Try adjusting your search terms.' : 'Confirmed orders will appear here.'}
+              {searchTerm
+                ? "Try adjusting your search terms."
+                : "Confirmed orders will appear here."}
             </p>
           </div>
         )}

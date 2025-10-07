@@ -99,17 +99,13 @@ const LoginPage = ({ onLogin, onNavigate }) => {
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="w-40 h-28 flex items-center justify-center mx-auto mb-4 transform transition-transform duration-200 hover:scale-105">
-            <img
-              src={logo}
-              alt="Raza Catering Logo"
-              className="h-40 w-40 rounded-2xl"
-            />
+            <img src={logo} alt="POS Logo" className="h-40 w-40 rounded-2xl" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
             Welcome Back
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Sign in to Raza Catering Dashboard
+            Sign in to POS Dashboard
           </p>
         </div>
 

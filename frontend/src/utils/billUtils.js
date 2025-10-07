@@ -47,7 +47,7 @@ export const generateBillHTML = (order) => {
     <div style="max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 12px; background: white; color: #333; font-family: Arial, sans-serif; line-height: 1.2;">
       <!-- Header -->
       <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 12px;">
-        <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">Raza Catering</div>
+        <div style="font-size: 20px; font-weight: bold; margin-bottom: 5px;">POS</div>
         <div style="font-size: 14px; color: #666;">Address: Your Restaurant Address</div>
         <div style="font-size: 14px; color: #666;">Phone: +92-XXX-XXXXXXX | Email: info@restaurant.com</div>
       </div>

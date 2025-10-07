@@ -50,10 +50,12 @@ const RegisterPage = ({ onNavigate }) => {
       };
 
       const res = await registerUser(userData);
-      toast.success("Registration successful! Please login with your credentials.");
+      toast.success(
+        "Registration successful! Please login with your credentials."
+      );
 
       console.log("Registration successful:", res);
-      
+
       // Reset form
       setRegisterForm({
         fullName: "",
@@ -84,7 +86,7 @@ const RegisterPage = ({ onNavigate }) => {
               Create Account
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              Join Raza Catering Dashboard
+              Join POS Dashboard
             </p>
           </div>
 

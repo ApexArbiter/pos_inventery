@@ -80,7 +80,7 @@ const Layout = ({ children, currentPage, onPageChange }) => {
 
             <div>
               <h1 className="text-xl font-bold text-gray-800 dark:text-white transition-colors duration-200">
-                Raza Catering
+                POS
               </h1>
               <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors duration-200">
                 Bill Management

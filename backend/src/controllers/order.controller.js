@@ -778,7 +778,7 @@ Order #: ${order.orderNumber}
 Total Amount: £${order.finalAmount.toFixed(2)}
 Status: ${order.status.toUpperCase()}
 
-Thank you for choosing Raza Catering! 🍽️
+Thank you for choosing POS! 🍽️
 
 For any queries, please contact us.`;
 
