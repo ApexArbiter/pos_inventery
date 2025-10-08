@@ -70,6 +70,10 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
   
+  // ADD THESE PRODUCTION URLS:
+  "https://pos-inventery-rho.vercel.app",
+  "https://pos-inventery.onrender.com",
+  
   // Tauri desktop app
   "tauri://localhost",
   "http://tauri.localhost",
@@ -109,7 +113,7 @@ app.use(
 
 // Connect to MongoDB
 connectDB();
-
+app.options('*', cors());
 // Health check endpoint
 app.get("/health", (req, res) => {
   res.json({
