@@ -70,9 +70,16 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
   
-  // ADD THESE PRODUCTION URLS:
+  // Production URLs
   "https://pos-inventery-rho.vercel.app",
   "https://pos-inventery.onrender.com",
+  
+  // React Native mobile apps
+  "http://localhost:8081", // React Native Metro bundler
+  "http://10.0.2.2:5001",   // Android emulator localhost
+  "http://192.168.18.50:5001", // Your local network IP
+  "http://192.168.1.1:5001",   // Common router IP
+  "http://192.168.0.1:5001",   // Common router IP
   
   // Tauri desktop app
   "tauri://localhost",
@@ -83,12 +90,24 @@ const allowedOrigins = [
   "capacitor://localhost",
   "ionic://localhost",
   "http://localhost",
+  
+  // Development origins
+  "http://localhost:5000",
+  "http://localhost:5001",
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
+    
+    // In development, be more permissive
+    if (NODE_ENV === 'development') {
+      // Allow localhost with any port
+      if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.')) {
+        return callback(null, true);
+      }
+    }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
