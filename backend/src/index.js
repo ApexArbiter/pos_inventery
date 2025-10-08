@@ -63,12 +63,26 @@ app.use(cookieParser());
 
 // CORS configuration
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:5173',
-  'http://127.0.0.1:5174'
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  
+  // ADD THESE PRODUCTION URLS:
+  "https://pos-inventery-rho.vercel.app",
+  "https://pos-inventery.onrender.com",
+  
+  // Tauri desktop app
+  "tauri://localhost",
+  "http://tauri.localhost",
+  "https://tauri.localhost",
+  
+  // Capacitor/Ionic mobile apps
+  "capacitor://localhost",
+  "ionic://localhost",
+  "http://localhost",
 ];
 
 app.use(cors({

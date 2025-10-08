@@ -256,7 +256,7 @@ const Login = () => {
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            © 2024 SuperMarket POS. All rights reserved.
+            © 2025 SuperMarket POS. All rights reserved.
           </p>
         </div>
       </div>
